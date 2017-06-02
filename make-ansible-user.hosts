@@ -1,0 +1,11 @@
+[master]
+host    ansible_host=192.168.1.1
+
+
+[all:vars]
+ansible_port=22
+ansible_user=pdfadmin
+# ansible_pass=
+# ansible_sudo_pass=
+
+

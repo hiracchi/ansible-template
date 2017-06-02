@@ -1,0 +1,49 @@
+# to make password
+# python -c 'import crypt; print crypt.crypt("gitgit", "$1$SomeSalt$")'
+---
+exec_group:
+  group: pdf
+  gid: 10000
+
+exec_user:
+  user: pdfansible
+  uid: 10000
+  group: pdf
+  groups: adm,sudo
+  password: ''
+  sudo_role: 'ALL=(ALL) NOPASSWD: ALL'
+  public_key: ''
+  private_key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    -----END RSA PRIVATE KEY-----
+  createhome: yes
+
+my_groups:
+  pdf:
+    gid: 10000
+
+my_users:
+  pdfadmin:
+    uid: 10001
+    group: pdf
+    groups: adm,sudo
+    password: ''
+    sudo_role: 'ALL=(ALL) ALL'
+    public_key: ''
+    createhome: yes  
+
+dns_nameservers:
+  - 8.8.8.8
+  - 8.8.4.4
+
+postfix:
+  relay_host: smtp.gmail.com
+  relay_port: 587
+  relay_user: hiracchibot@gmail.com
+  relay_password: QYzFFhUUJ9V2
+
+my_apt_server: ftp.jaist.ac.jp/pub/Linux
+
+ntp_servers:
+  - 157.82.158.193
+

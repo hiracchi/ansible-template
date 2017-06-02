@@ -1,0 +1,48 @@
+- hosts: all
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: add exec_groups
+      become: yes
+      group:
+        name: "{{ exec_group.group }}"
+        gid: "{{ exec_group.gid }}"
+        state: present
+
+    - name: output
+      debug: var=exec_user
+      
+    - name: add exec_users
+      become: yes
+      user:
+        name: "{{ exec_user.user }}"
+        uid: "{{ exec_user.uid }}"
+        group: "{{ exec_user.group }}"
+        groups: "{{ exec_user.groups }}"
+        password: "{{ exec_user.password }}"
+        state: present
+
+    - name: set up authorized_keys for ansible_user
+      become: yes
+      authorized_key:
+        user: "{{ exec_user.user }}"
+        key: "{{ exec_user.public_key }}"
+
+    - name: edit sudoers for exec_user
+      become: yes
+      lineinfile:
+        dest: "/etc/sudoers.d/{{ exec_user.user }}"
+        owner: root
+        group: root
+        mode: "0440"
+        state: present
+        create: yes
+        line: "{{ exec_user.user }} {{ exec_user.sudo_role }}"
+        validate: 'visudo -cf %s'
+      when: exec_user.sudo_role is defined
+
+    - name: set private key on running host for next logon
+      local_action: shell echo "{{ exec_user.private_key }}" > "./ssh/{{ exec_user.user }}" && chmod 600 "./ssh/{{ exec_user.user }}"
+      when: exec_user.private_key is defined
+
+

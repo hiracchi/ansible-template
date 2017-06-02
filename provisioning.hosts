@@ -1,0 +1,17 @@
+[host]
+host    ansible_host=192.168.1.1
+
+# ----------------------------------------------------------------------
+[master:children]
+host
+
+# ----------------------------------------------------------------------
+[all:vars]
+ansible_port=22
+ansible_ssh_user=pdfansible
+ansible_private_key_file=./ssh/pdfansible
+
+# [vagrant:vars]
+# ansible_port=2222
+
+

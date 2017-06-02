@@ -1,0 +1,6 @@
+[submodule "roles"]
+	path = roles
+	url = git@github.com:hiracchi/ansible-roles.git
+[submodule "utils"]
+	path = utils
+	url = git@github.com:hiracchi/my-shell-utils.git

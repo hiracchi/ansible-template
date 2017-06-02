@@ -1,0 +1,47 @@
+- hosts: all
+  become: no
+  vars:
+    hosts_table:
+      - hostname: host.local
+        ipv4_address: 192.168.1.1
+        alias: host
+    hosts_allow_table:
+      - daemon_list: sshd
+        host_list: ALL
+      - daemon_list: ALL
+        host_list: 192.168.1.
+      - daemon_list: ALL
+        host_list: localhost 127.0.0.1 
+
+  roles:
+    # - show-variables
+    - apt-mirror-client
+    - apt-upgrade
+    - hostname
+    - hosts
+    - resolv.conf
+    - sshd
+    - ubuntu-basics
+    - ubuntu1604ja
+
+  tasks:
+    - name: modify users
+      become: yes
+      user:
+        name: "{{ item.key }}"
+        uid: "{{ item.value.uid }}"
+        group: "{{ item.value.group }}"
+        groups: "{{ item.value.groups }}"
+        password: "{{ item.value.password }}"
+        shell: "{{ item.value.shell | default('/bin/bash') }}"
+        state: present
+      with_dict: "{{ my_users | default({}) }}"
+      
+    - name: set up authorized_keys for the deploy user
+      become: yes
+      authorized_key:
+        user: "{{ item.key}}"
+        key: "{{ item.value.public_key }}"
+      with_dict: "{{ my_users | default({}) }}"
+
+      
