@@ -1,0 +1,22 @@
+- name: Bootstrap ansible user when bootstrap login is unavailable
+  hosts: bootstrap_required
+  gather_facts: false
+  ignore_unreachable: true
+  remote_user: "{{ bootstrap_initial_user }}"
+  become: true
+  vars:
+    ansible_password: "{{ vault_bootstrap_initial_password }}"
+    ansible_become_password: "{{ vault_bootstrap_become_password | default(vault_bootstrap_initial_password) }}"
+  tasks:
+    - name: Run bootstrap role
+      ansible.builtin.include_role:
+        name: bootstrap
+      ignore_errors: true
+
+- name: Reactivate hosts after bootstrap
+  hosts: all
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Clear host error state
+      meta: clear_host_errors

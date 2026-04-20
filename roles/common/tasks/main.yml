@@ -1,0 +1,15 @@
+- name: Install common packages
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
+  when: common_packages | length > 0
+
+- name: Ensure common directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(provision_ssh_user) }}"
+    group: "{{ item.group | default(provision_ssh_user) }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop: "{{ common_managed_directories }}"
+  when: common_managed_directories | length > 0

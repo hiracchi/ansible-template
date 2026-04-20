@@ -1,0 +1,17 @@
+bootstrap_initial_user: initial-admin
+bootstrap_admin_group: sudo
+bootstrap_ansible_user: ansible
+bootstrap_ansible_user_shell: /bin/bash
+bootstrap_ansible_user_groups:
+  - "{{ bootstrap_admin_group }}"
+bootstrap_ansible_user_authorized_keys:
+  - "{{ lookup('file', provision_ssh_public_key_file) }}"
+bootstrap_manage_sudoers: true
+
+provision_ssh_user: "{{ bootstrap_ansible_user }}"
+provision_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/.ssh/id_ansible"
+provision_ssh_public_key_file: "{{ provision_ssh_private_key_file }}.pub"
+ssh_connect_timeout: 5
+
+common_packages: []
+common_managed_directories: []

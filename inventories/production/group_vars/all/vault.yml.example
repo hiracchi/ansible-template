@@ -1,0 +1,2 @@
+vault_bootstrap_initial_password: CHANGEME
+# vault_bootstrap_become_password: CHANGEME

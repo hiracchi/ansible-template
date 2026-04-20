@@ -1,0 +1,39 @@
+- name: Classify hosts by bootstrap requirement
+  hosts: all
+  gather_facts: false
+  connection: local
+  vars:
+    target_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+    target_port: "{{ hostvars[inventory_hostname].ansible_port | default(22) }}"
+  tasks:
+    - name: Check whether bootstrap ansible user can log in
+      ansible.builtin.shell: >-
+        ssh
+        -o BatchMode=yes
+        -o ConnectTimeout={{ ssh_connect_timeout }}
+        -o StrictHostKeyChecking=accept-new
+        {% if provision_ssh_private_key_file | default('') | length > 0 %}
+        -i {{ provision_ssh_private_key_file | quote }}
+        {% endif %}
+        -p {{ target_port | quote }}
+        {{ bootstrap_ansible_user | quote }}@{{ target_host | quote }}
+        true
+      args:
+        executable: /bin/bash
+      register: bootstrap_ansible_user_check
+      changed_when: false
+      failed_when: false
+
+    - name: Mark hosts that need bootstrap
+      ansible.builtin.group_by:
+        key: bootstrap_required
+      when: bootstrap_ansible_user_check.rc != 0
+
+    - name: Mark hosts that are ready for provisioning
+      ansible.builtin.group_by:
+        key: provision_ready
+      when: bootstrap_ansible_user_check.rc == 0
+
+- import_playbook: bootstrap.yml
+
+- import_playbook: provisioning.yml
