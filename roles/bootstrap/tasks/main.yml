@@ -1,31 +1,34 @@
-- name: Ensure admin group exists
+- name: Ensure primary group exists
   ansible.builtin.group:
-    name: "{{ bootstrap_admin_group }}"
+    name: "{{ provisioner_primary_group }}"
+    gid: "{{ provisioner_primary_group_gid if (provisioner_primary_group_gid | string | length > 0) else omit }}"
     state: present
+  when: provisioner_primary_group | length > 0
 
 - name: Ensure ansible user exists
   ansible.builtin.user:
-    name: "{{ bootstrap_ansible_user }}"
-    shell: "{{ bootstrap_ansible_user_shell }}"
-    groups: "{{ bootstrap_ansible_user_groups }}"
+    name: "{{ provisioner_name }}"
+    uid: "{{ provisioner_uid if (provisioner_uid | string | length > 0) else omit }}"
+    group: "{{ provisioner_primary_group if provisioner_primary_group | length > 0 else omit }}"
+    shell: "{{ provisioner_shell }}"
+    groups: "{{ provisioner_groups }}"
     append: true
     create_home: true
     state: present
 
 - name: Install authorized keys for ansible user
   ansible.posix.authorized_key:
-    user: "{{ bootstrap_ansible_user }}"
-    key: "{{ item }}"
+    user: "{{ provisioner_name }}"
+    key: "{{ lookup('file', provisioner_public_key_file) }}"
     state: present
-  loop: "{{ bootstrap_ansible_user_authorized_keys }}"
-  when: bootstrap_ansible_user_authorized_keys | length > 0
+  when: provisioner_public_key_file | default('') | length > 0
 
 - name: Allow passwordless sudo for ansible user
   ansible.builtin.copy:
-    dest: "/etc/sudoers.d/{{ bootstrap_ansible_user }}"
-    content: "{{ bootstrap_ansible_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ provisioner_name }}"
+    content: "{{ provisioner_name }} ALL=(ALL) NOPASSWD:ALL\n"
     owner: root
     group: root
     mode: "0440"
     validate: "/usr/sbin/visudo -cf %s"
-  when: bootstrap_manage_sudoers | bool
+  when: provisioner_passwordless_sudo | bool

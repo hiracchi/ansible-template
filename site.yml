@@ -12,27 +12,28 @@
         -o BatchMode=yes
         -o ConnectTimeout={{ ssh_connect_timeout }}
         -o StrictHostKeyChecking=accept-new
-        {% if provision_ssh_private_key_file | default('') | length > 0 %}
-        -i {{ provision_ssh_private_key_file | quote }}
+        -o IdentitiesOnly=yes
+        {% if provisioner_private_key_file | default('') | length > 0 %}
+        -i {{ provisioner_private_key_file | quote }}
         {% endif %}
         -p {{ target_port | quote }}
-        {{ bootstrap_ansible_user | quote }}@{{ target_host | quote }}
+        {{ provisioner_name | quote }}@{{ target_host | quote }}
         true
       args:
         executable: /bin/bash
-      register: bootstrap_ansible_user_check
+      register: provisioner_name_check
       changed_when: false
       failed_when: false
 
     - name: Mark hosts that need bootstrap
       ansible.builtin.group_by:
         key: bootstrap_required
-      when: bootstrap_ansible_user_check.rc != 0
+      when: provisioner_name_check.rc != 0
 
     - name: Mark hosts that are ready for provisioning
       ansible.builtin.group_by:
         key: provision_ready
-      when: bootstrap_ansible_user_check.rc == 0
+      when: provisioner_name_check.rc == 0
 
 - import_playbook: bootstrap.yml
 

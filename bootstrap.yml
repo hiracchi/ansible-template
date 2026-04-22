@@ -2,7 +2,7 @@
   hosts: bootstrap_required
   gather_facts: false
   ignore_unreachable: true
-  remote_user: "{{ bootstrap_initial_user }}"
+  remote_user: "{{ bootstrap_user }}"
   become: true
   vars:
     ansible_password: "{{ vault_bootstrap_initial_password }}"

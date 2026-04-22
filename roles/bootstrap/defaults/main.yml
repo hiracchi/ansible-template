@@ -1,4 +1,6 @@
-bootstrap_manage_sudoers: true
-bootstrap_ansible_user_groups: []
-bootstrap_ansible_user_authorized_keys: []
-bootstrap_ansible_user_shell: /bin/bash
+provisioner_passwordless_sudo: true
+provisioner_uid: ""
+provisioner_primary_group: ""
+provisioner_primary_group_gid: ""
+provisioner_groups: []
+provisioner_shell: /bin/bash

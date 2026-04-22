@@ -1,16 +1,15 @@
-bootstrap_initial_user: initial-admin
-bootstrap_admin_group: sudo
-bootstrap_ansible_user: ansible
-bootstrap_ansible_user_shell: /bin/bash
-bootstrap_ansible_user_groups:
-  - "{{ bootstrap_admin_group }}"
-bootstrap_ansible_user_authorized_keys:
-  - "{{ lookup('file', provision_ssh_public_key_file) }}"
-bootstrap_manage_sudoers: true
+bootstrap_user: initial-admin
 
-provision_ssh_user: "{{ bootstrap_ansible_user }}"
-provision_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/.ssh/id_ansible"
-provision_ssh_public_key_file: "{{ provision_ssh_private_key_file }}.pub"
+provisioner_name: ansible
+provisioner_uid: ""
+provisioner_primary_group: sudo
+provisioner_primary_group_gid: ""
+provisioner_groups: []
+provisioner_shell: /bin/bash
+provisioner_private_key_file: "{{ lookup('env', 'HOME') }}/.ssh/id_ansible"
+provisioner_public_key_file: "{{ provisioner_private_key_file }}.pub"
+provisioner_passwordless_sudo: true
+
 ssh_connect_timeout: 5
 
 common_packages: []
