@@ -22,6 +22,7 @@ READMEの方針に沿ったAnsible雛形です。
     * 例: `./scripts/run-playbook.sh web01 db` は `--limit web01,db` として実行される
 * 位置引数と `-l/--limit` の同時指定はエラー
 * Vaultオプション未指定時は `.vault_pass.txt` があれば `--vault-password-file`、なければ `--ask-vault-pass` を自動選択
+* `./ssh/{{ provisioner_name }}.vault` が存在し `./ssh/{{ provisioner_name }}` が存在しない場合は、実行時に一時復号して利用し、終了時に削除する
 
 ### 主要変数（inventories/production/group_vars/all/main.yml）
 
@@ -32,8 +33,8 @@ READMEの方針に沿ったAnsible雛形です。
 * `provisioner_primary_group_gid`: primary groupのGID（空なら自動割当）
 * `provisioner_groups`: supplementary groups（配列）
 * `provisioner_shell`: provisionerユーザーのログインシェル
-* `provisioner_private_key_file`: SSH秘密鍵パス
-* `provisioner_public_key_file`: SSH公開鍵パス（bootstrap時の authorized_keys 登録で使用）
+* `provisioner_private_key_file`: SSH秘密鍵パス（既定: `./ssh/{{ provisioner_name }}`）
+* `provisioner_public_key_file`: SSH公開鍵パス（既定: `./ssh/{{ provisioner_name }}.pub`、bootstrap時の authorized_keys 登録で使用）
 * `provisioner_passwordless_sudo`: sudoersを作成するか
 * `ssh_connect_timeout`: 接続判定時のSSHタイムアウト秒数
 
@@ -156,8 +157,20 @@ READMEの方針に沿ったAnsible雛形です。
     * bootstrap_user
     * provisioner_name
     * provisioner_private_key_file
+    * provisioner_public_key_file
 4. [inventories/production/group_vars/all/vault.yml.example](inventories/production/group_vars/all/vault.yml.example) を参考に、vault用の inventories/production/group_vars/all/vault.yml を作成して暗号化する
 5. provision用秘密鍵の公開鍵が [inventories/production/group_vars/all/main.yml](inventories/production/group_vars/all/main.yml) の provisioner_public_key_file で参照できることを確認する
+6. 接続用SSH鍵を `./ssh` 配下に配置する
+    * 公開鍵: `./ssh/{{ provisioner_name }}.pub`
+    * 秘密鍵: `./ssh/{{ provisioner_name }}.vault`（ansible-vaultで暗号化）
+
+秘密鍵の暗号化例:
+
+```bash
+mkdir -p ssh
+ansible-vault encrypt ssh/<provisioner_name> --output ssh/<provisioner_name>.vault
+rm -f ssh/<provisioner_name>
+```
 
 vaultファイル作成例:
 

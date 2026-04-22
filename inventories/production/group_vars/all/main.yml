@@ -6,8 +6,8 @@ provisioner_primary_group: sudo
 provisioner_primary_group_gid: ""
 provisioner_groups: []
 provisioner_shell: /bin/bash
-provisioner_private_key_file: "{{ lookup('env', 'HOME') }}/.ssh/id_ansible"
-provisioner_public_key_file: "{{ provisioner_private_key_file }}.pub"
+provisioner_private_key_file: "{{ playbook_dir }}/ssh/{{ provisioner_name }}"
+provisioner_public_key_file: "{{ playbook_dir }}/ssh/{{ provisioner_name }}.pub"
 provisioner_passwordless_sudo: true
 
 ssh_connect_timeout: 5

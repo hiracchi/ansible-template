@@ -1,7 +1,6 @@
 - name: Classify hosts by bootstrap requirement
   hosts: all
   gather_facts: false
-  connection: local
   vars:
     target_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
     target_port: "{{ hostvars[inventory_hostname].ansible_port | default(22) }}"

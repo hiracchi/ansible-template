@@ -35,12 +35,31 @@ EOF
 
 playbook="site.yml"
 default_vault_password_file="${REPO_ROOT}/.vault_pass.txt"
+main_vars_file="${REPO_ROOT}/inventories/production/group_vars/all/main.yml"
+provisioner_name="${PROVISIONER_NAME:-}"
+
+if [[ -z "${provisioner_name}" && -f "${main_vars_file}" ]]; then
+  provisioner_name=$(awk -F: '/^[[:space:]]*provisioner_name:[[:space:]]*/ { v=$2; sub(/^[[:space:]]*/, "", v); sub(/[[:space:]]*$/, "", v); gsub(/^"|"$/, "", v); print v; exit }' "${main_vars_file}")
+fi
+
+provisioner_name="${provisioner_name:-ansible}"
+encrypted_private_key_file="${REPO_ROOT}/ssh/${provisioner_name}.vault"
+runtime_private_key_file="${REPO_ROOT}/ssh/${provisioner_name}"
 vault_args=()
 ansible_args=()
 target_patterns=()
 vault_option_explicitly_set=false
 playbook_option_count=0
 limit_option_explicitly_set=false
+cleanup_decrypted_key=false
+
+cleanup() {
+  if [[ "${cleanup_decrypted_key}" == true && -f "${runtime_private_key_file}" ]]; then
+    rm -f "${runtime_private_key_file}"
+  fi
+}
+
+trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -128,4 +147,12 @@ fi
 
 cd "${REPO_ROOT}"
 
-exec ansible-playbook "${playbook}" "${vault_args[@]}" "${ansible_args[@]}"
+if [[ -f "${encrypted_private_key_file}" && ! -f "${runtime_private_key_file}" ]]; then
+  mkdir -p "${REPO_ROOT}/ssh"
+  umask 077
+  ansible-vault view "${vault_args[@]}" "${encrypted_private_key_file}" > "${runtime_private_key_file}"
+  chmod 600 "${runtime_private_key_file}"
+  cleanup_decrypted_key=true
+fi
+
+ansible-playbook "${playbook}" "${vault_args[@]}" "${ansible_args[@]}"
