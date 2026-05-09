@@ -1,22 +1,54 @@
-- name: Bootstrap ansible user when bootstrap login is unavailable
-  hosts: bootstrap_required
-  gather_facts: false
-  ignore_unreachable: true
-  remote_user: "{{ bootstrap_user }}"
-  become: true
-  vars:
-    ansible_password: "{{ vault_bootstrap_initial_password }}"
-    ansible_become_password: "{{ vault_bootstrap_become_password | default(vault_bootstrap_initial_password) }}"
-  tasks:
-    - name: Run bootstrap role
-      ansible.builtin.include_role:
-        name: bootstrap
-      ignore_errors: true
-
-- name: Reactivate hosts after bootstrap
+- name: Setup Ansible User
   hosts: all
-  gather_facts: false
-  connection: local
+  gather_facts: true
+  become: false
   tasks:
-    - name: Clear host error state
-      meta: clear_host_errors
+    - name: Add provisioning_groups
+      become: true
+      ansible.builtin.group:
+        name: "{{ provisioning_group.group }}"
+        gid: "{{ provisioning_group.gid }}"
+        state: present
+
+    - name: Add provisioning_users
+      become: true
+      ansible.builtin.user:
+        name: "{{ provisioning_user.user }}"
+        uid: "{{ provisioning_user.uid }}"
+        group: "{{ provisioning_user.group }}"
+        groups: "{{ provisioning_user.groups }}"
+        password: "{{ provisioning_user.password }}"
+        state: present
+
+    - name: Set up authorized_keys for ansible_user
+      become: true
+      ansible.posix.authorized_key:
+        user: "{{ provisioning_user.user }}"
+        key: "{{ provisioning_user.public_key }}"
+
+    - name: Edit sudoers for provisioning_user
+      become: true
+      community.general.sudoers:
+        name: provisioning-user
+        user: "{{ provisioning_user.user }}"
+        commands: ALL
+        runas: ALL
+        nopassword: true
+        state: present
+
+    - name: Check private key file exists on localhost
+      ansible.builtin.stat:
+        path: "./ssh/{{ provisioning_user.user }}"
+      delegate_to: localhost
+      register: local_private_key_file
+      when: provisioning_user.private_key is defined
+
+    - name: Set private key on localhost for next logon
+      ansible.builtin.copy:
+        content: "{{ provisioning_user.private_key }}"
+        dest: "./ssh/{{ provisioning_user.user }}"
+        mode: "0600"
+      delegate_to: localhost
+      when:
+        - provisioning_user.private_key is defined
+        - not local_private_key_file.stat.exists

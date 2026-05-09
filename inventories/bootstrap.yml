@@ -1,0 +1,3 @@
+ansible_user: pdf00
+ansible_password: initial0
+ansible_become_password: initial0

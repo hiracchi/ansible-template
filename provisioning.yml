@@ -1,10 +1,44 @@
-- name: Provision hosts with ansible user
+---
+# ---------------------------------------------------------------------
+# all
+# ---------------------------------------------------------------------
+- name: Update apt source
+  hosts: all
+  tasks:
+    - name: Update apt source
+      become: true
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '(http|mirror)://\S+'
+        # replace: 'http://jp.archive.ubuntu.com/ubuntu'
+        # replace: 'http://ftp.jaist.ac.jp/pub/Linux/ubuntu/'
+        replace: 'mirror://mirrors.ubuntu.com/mirrors.txt'
+        # backup: yes
+
+- name: Setup all hosts
   hosts: all
   gather_facts: true
-  ignore_unreachable: true
-  remote_user: "{{ provisioner_name }}"
-  vars:
-    ansible_ssh_private_key_file: >-
-      {{ provisioner_private_key_file if (provisioner_private_key_file | default('') | length > 0) else omit }}
+  become: false
+  pre_tasks:
+    - name: Update apt cache
+      become: true
+      ansible.builtin.apt:
+        cache_valid_time: 600
+        autoremove: true
+        upgrade: "safe"
   roles:
-    - common
+    # - show-variables
+    - timezone
+    - hostname
+    - hosts
+    - ubuntu-base
+  tasks:
+    - name: Install extra package
+      become: true
+      ansible.builtin.apt:
+        pkg:
+          - locales-all
+          # - btop
+          # - inxi
+        state: present
+

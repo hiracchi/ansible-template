@@ -1,7 +1,2 @@
-.ansible/
-.vault_pass.txt
-*.retry
-ssh/*
-!ssh/.gitkeep
-!ssh/*.pub
-!ssh/*.vault
+.vault_password
+ansible.log

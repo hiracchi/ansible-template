@@ -1,3 +1,0 @@
-provisioner_primary_group: sudo
-provisioner_primary_group_gid: ""
-ansible_python_interpreter: auto_silent
