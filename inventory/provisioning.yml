@@ -1,2 +1,2 @@
-ansible_user: pdfansible
-ansible_private_key_file: ./ssh/pdfansible
+ansible_user: ansible
+ansible_private_key_file: ./ssh/ansible

@@ -91,7 +91,7 @@ reboot_system()
         ${ASK_VAULT_PASS} \
         -i inventory/provisioning.yml \
         -l ${GROUP} \
-        th-works3.yml \
+        reboot.yml \
         $*
     echo "done."
 }

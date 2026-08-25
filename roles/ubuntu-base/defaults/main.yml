@@ -1,0 +1,12 @@
+---
+ubuntu_base_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - ca-certificates
+  - gnupg
+  - software-properties-common
+  - tar
+  - unzip

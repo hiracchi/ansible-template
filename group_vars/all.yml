@@ -1,0 +1,19 @@
+---
+provisioning_group:
+  group: ansible
+  gid: 2000
+
+provisioning_user:
+  user: ansible
+  uid: 2000
+  group: ansible
+  groups:
+    - sudo
+  password: "!"
+  # SSH public key for authorized_keys (set your public key here)
+  public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyForAnsibleTemplateOnlyDummyKey ansible@example.com"
+  # SSH private key for local ~/.ssh placement (optional)
+  # private_key: |
+  #   -----BEGIN OPENSSH PRIVATE KEY-----
+  #   ...
+  #   -----END OPENSSH PRIVATE KEY-----

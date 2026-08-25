@@ -1,0 +1,16 @@
+---
+- name: Ensure localhost is in /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+localhost'
+    line: "127.0.0.1 localhost"
+    state: present
+
+- name: Ensure inventory_hostname is in /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ inventory_hostname }}"
+    state: present
