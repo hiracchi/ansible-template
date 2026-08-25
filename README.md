@@ -1,242 +1,153 @@
 # ansible-template
 
-READMEの方針に沿ったAnsible雛形です。
+Ansibleで環境設定を行うテンプレートプロジェクトです。
+
+> **注記**: 本ファイルはリポジトリの実ファイルを読み直して現状に合わせて更新したものです。
+> 過去のREADMEは `site.yml` / `inventories/production/` / `roles/bootstrap` などを前提とした、より作り込まれた構成を説明していましたが、
+> commit `992c08e`(「update」)でその構成は撤去され、現在は `inventory/` + `bootstrap.yml` + `provisioning.yml` を直接書く簡易構成に戻っています。
+> 旧構成は `git show 992c08e^:site.yml` などで参照できます。
+> また、旧構成前提で動かなくなっていた `scripts/run-playbook.sh` は削除済みです。実行入口は [exec.sh](exec.sh) に一本化しています。
 
 ## 現在の仕様まとめ
 
-### 実行フロー
+### 実行は exec.sh に一本化
 
-1. [site.yml](site.yml) で、各ホストに対して `provisioner_name` のSSH接続可否をローカルから判定する
-2. 接続不可ホストを `bootstrap_required` に分類する
-3. [bootstrap.yml](bootstrap.yml) で `bootstrap_required` に対して bootstrap を実行する
-4. bootstrap結果にかかわらず [provisioning.yml](provisioning.yml) で全ホストに provisioning を試行する
+* [exec.sh](exec.sh) が唯一の実行入口
+    * `inventory/hosts.yml` / `inventory/bootstrap.yml` / `inventory/provisioning.yml` を使う
 
-### run-playbook.sh の仕様
+### exec.sh の実行フロー
 
-* 対象スクリプト: [scripts/run-playbook.sh](scripts/run-playbook.sh)
-* playbook選択オプション:
-    * `--site` (デフォルト)
-    * `--bootstrap-only`
-    * `--provisioning-only`
-* 位置引数はホスト名/グループ名として解釈され、`--limit` に変換される
-    * 例: `./scripts/run-playbook.sh web01 db` は `--limit web01,db` として実行される
-* 位置引数と `-l/--limit` の同時指定はエラー
-* Vaultオプション未指定時は `.vault_pass.txt` があれば `--vault-password-file`、なければ `--ask-vault-pass` を自動選択
-* `./ssh/{{ provisioner_name }}.vault` が存在し `./ssh/{{ provisioner_name }}` が存在しない場合は、実行時に一時復号して利用し、終了時に削除する
+1. `check_connect()`: `inventory/provisioning.yml` の変数(`ansible_user: pdfansible` など)を `--extra-vars` で渡し、`ansible -a uptime` で対象グループに接続できるか確認する
+2. 接続できれば `do_provisioning()` に進み、`provisioning.yml` を実行する
+3. 接続できなければ `initialize()` で `inventory/bootstrap.yml` の変数(`ansible_user: pdf00` など)を使い `bootstrap.yml` を実行する
+4. bootstrap後に再度 `check_connect()` を行い、成功すれば `do_provisioning()` を実行する。失敗したらエラー終了する
+5. 実行末尾に `reboot_system()` が定義されているが呼び出しはコメントアウトされている(未使用)
 
-### 主要変数（inventories/production/group_vars/all/main.yml）
+引数: 第1引数がグループ/ホスト名として `GROUP` に入り、`ansible-playbook -l ${GROUP}` に渡される(省略時は `all`)。
 
-* `bootstrap_user`: 初期接続に使うユーザー
-* `provisioner_name`: provisioningに使うユーザー名
-* `provisioner_uid`: provisionerユーザーのUID（空なら自動割当）
-* `provisioner_primary_group`: provisionerのprimary group
-* `provisioner_primary_group_gid`: primary groupのGID（空なら自動割当）
-* `provisioner_groups`: supplementary groups（配列）
-* `provisioner_shell`: provisionerユーザーのログインシェル
-* `provisioner_private_key_file`: SSH秘密鍵パス（既定: `./ssh/{{ provisioner_name }}`）
-* `provisioner_public_key_file`: SSH公開鍵パス（既定: `./ssh/{{ provisioner_name }}.pub`、bootstrap時の authorized_keys 登録で使用）
-* `provisioner_passwordless_sudo`: sudoersを作成するか
-* `ssh_connect_timeout`: 接続判定時のSSHタイムアウト秒数
+Vaultパスワードは `./.vault_password` があれば `--vault-password-file` を使い、無ければ `--ask-vault-pass`。
+`BOOTSTRAP_ASK_BECOME_PASS=1` を環境変数で指定すると bootstrap 実行時に `--ask-become-pass` を追加する。
 
-### Vault変数
+### bootstrap.yml (現状)
 
-* サンプル: [inventories/production/group_vars/all/vault.yml.example](inventories/production/group_vars/all/vault.yml.example)
-* `vault_bootstrap_initial_password`: `bootstrap_user` のログインパスワード
-* `vault_bootstrap_become_password`: sudo昇格パスワード（未設定時は初期パスワードを利用）
+* play名 `Setup Ansible User`、`hosts: all`、`become: false`(各タスクで個別に `become: true`)
+* `provisioning_group.{group,gid}` でグループ作成
+* `provisioning_user.{user,uid,group,groups,password}` でユーザー作成
+* `provisioning_user.public_key` を `authorized_key` に登録
+* `community.general.sudoers` で `provisioning_user.user` にNOPASSWDのsudoersを設定(name: `provisioning-user`)
+* `provisioning_user.private_key` が定義されていれば、localhost側 `./ssh/{{ provisioning_user.user }}` が未作成の場合のみ書き出す(次回ログオン用)
 
-### Ansible出力設定
+**注意**: `provisioning_group` / `provisioning_user` という変数は、`inventory/bootstrap.yml` にも `group_vars/*.yml` にもロールのdefaultsにも定義されていない。
+`roles/` は `.gitkeep` のみで中身が無い。つまり **現状のままではこれらの変数が未定義で実行時エラーになる**(どこかで `-e` や host_vars 等を使って渡す前提と思われるが、その仕組みは未実装)。
 
-* [ansible.cfg](ansible.cfg) で `stdout_callback=default` と `result_format=yaml` を使用
-* `community.general.yaml` には依存しない
+### provisioning.yml (現状)
 
-## これまでの作業内容
+* Play1 `Update apt source`: `/etc/apt/sources.list` の `http://` または `mirror://` 始まりの行を `mirror://mirrors.ubuntu.com/mirrors.txt` に置換
+* Play2 `Setup all hosts`:
+    * `pre_tasks` で `apt update`(`cache_valid_time: 600`)+ `autoremove` + `upgrade: safe`
+    * `roles: [timezone, hostname, hosts, ubuntu-base]` を適用
+    * 追加パッケージとして `locales-all` をインストール
 
-このリポジトリでは、READMEの要件に合わせて以下の雛形を作成しました。
+**注意**: `roles/` 配下は空(`.gitkeep` のみ)のため、上記4つのroleは**実体が存在せず実行時に失敗する**。
 
-* Ansibleの基本設定として [ansible.cfg](ansible.cfg) を追加した
-* inventoryの雛形として [inventories/production/hosts.yml](inventories/production/hosts.yml) と group_vars を追加した
-* 秘密情報を平文で管理しないため、vaultの雛形として [inventories/production/group_vars/all/vault.yml.example](inventories/production/group_vars/all/vault.yml.example) を追加した
-* bootstrap用roleとして [roles/bootstrap/tasks/main.yml](roles/bootstrap/tasks/main.yml) を追加し、ansible用ユーザー作成、公開鍵登録、sudoers設定を実装した
-* provisioning用の共通roleとして [roles/common/tasks/main.yml](roles/common/tasks/main.yml) を追加した
-* ansible.posix の利用を明示するため、[collections/requirements.yml](collections/requirements.yml) を追加した
-* 一時ファイルやvaultパスワードファイルをgit登録しないため、[.gitignore](.gitignore) を追加した
+### inventory 配下
 
-また、playbookの責務を分けるために以下の構成に整理しています。
+* [inventory/hosts.yml](inventory/hosts.yml)
+    * グループ: `frontend`(`jarvis-prxvm-docker-01`, host指定あり)、`cluster_clients`(`jarvis-prxvm-gw-01`)、`ubuntu2604_sudows`(`jarvis-control-01`)
+    * `vars` で `ansible_connection: ssh`, `ansible_port: 22`
+* [inventory/bootstrap.yml](inventory/bootstrap.yml)
+    * bootstrap用の初期ログイン変数: `ansible_user: pdf00`, `ansible_password`, `ansible_become_password`(共に `initial0`)
+    * 平文パスワードが直接書かれている。運用時はvault化が必要(現状は雛形のまま)
+* [inventory/provisioning.yml](inventory/provisioning.yml)
+    * provisioning用ユーザー: `ansible_user: pdfansible`, `ansible_private_key_file: ./ssh/pdfansible`
 
-* [site.yml](site.yml)
-    * provisioner_name で接続できるかを判定する
-    * bootstrap と provisioning の呼び出し順を制御する
-* [bootstrap.yml](bootstrap.yml)
-    * bootstrap_required に分類されたホストに対して bootstrap を実行する
-    * 途中で失敗したホストも後段で再評価できるように host error state をクリアする
-* [provisioning.yml](provisioning.yml)
-    * bootstrap の成否にかかわらず、provisioner_name で provisioning を試行する
+### group_vars
 
-実行フローは次の通りです。
+* [group_vars/all.yml](group_vars/all.yml): 空ファイル
+* [group_vars/ubuntu2604_sudows.yml](group_vars/ubuntu2604_sudows.yml): `ansible_become: true` / `ansible_become_method: sudo` / `ansible_become_exe: /usr/bin/sudo.ws`(標準の `/usr/bin/sudo` ではなく `sudo.ws` という別コマンドを指定している。対象環境固有のラッパーと思われる)
 
-1. [site.yml](site.yml) が各ホストに対して provisioner_name でSSH接続できるかをローカルから確認する
-2. 接続できなかったホストだけを bootstrap_required として [bootstrap.yml](bootstrap.yml) で処理する
-3. bootstrapの成否にかかわらず、[provisioning.yml](provisioning.yml) で全ホストに対して provisioning を試行する
-4. provisioningの具体的な処理は [roles/common/tasks/main.yml](roles/common/tasks/main.yml) に追加していく
+### ansible.cfg
 
-このテンプレートでは、以下の流れでセットアップを行います。
+* `host_key_checking = False`
+* `log_path = ./ansible.log`
+* `allow_world_readable_tmpfiles = True`
+* `[ssh_connection] pipelining = True`
+* `[privilege_escalation] become_flags = -H -S`
 
-* LinuxまたはmacOS上のAnsible実行端末から接続する
-* まずAnsible実行端末から、対象ホストへ provisioner_name でSSH接続できるかを確認する
-* 接続できない場合は、OS導入時の初期ユーザーとパスワードで接続し、ansible用ユーザーをbootstrapする
-* bootstrapの成否にかかわらず、その後のprovisioningは provisioner_name で実行を試行する
-* パスワードなどの秘密情報は、gitに平文で登録せず、ansible-vaultで管理する前提にする
+### ssh_config
 
-## ディレクトリ構成
+リポジトリ直下の [ssh_config](ssh_config) はSSHクライアント向けの設定(`ForwardAgent`, `StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null` など)。
+`ansible.cfg` の `[ssh_connection]` からは参照されておらず、`exec.sh` からも使われていない。手動で `ssh -F ssh_config` するか、`~/.ssh/config` に読み込ませる運用を想定していると思われるが、結線は未実装。
+
+### collections
+
+[collections/requirements.yml](collections/requirements.yml): `ansible.posix`, `community.general`
+`scripts/install-collections.sh` で `ansible-galaxy collection install -r collections/requirements.yml` を実行する。
+
+### Vault関連スクリプト
+
+* [scripts/encrypt.sh](scripts/encrypt.sh) / [scripts/decrypt.sh](scripts/decrypt.sh)
+    * 引数のファイルを `ansible-vault encrypt/decrypt` する
+    * カレントディレクトリに `.vault_password` があればそれをパスワードファイルとして使う(`.gitignore` 済み)
+    * `exec.sh` が参照する `.vault_password` とファイル名は一致している
+* [scripts/make-password.py](scripts/make-password.py)
+    * `passlib` の `sha512_crypt` でパスワードハッシュを生成する対話スクリプト(vaultに入れる `ansible_password` 用ハッシュ作成などに利用と思われる)
+
+### .gitignore
+
+`.vault_password` と `ansible.log` を除外。秘密鍵(`ssh/` 配下)や `roles/` の中身は `.gitkeep` があるのみで、実体は git 管理対象外(未作成)。
+
+## ディレクトリ構成(実際)
 
 ```text
 .
 |-- .gitignore
 |-- ansible.cfg
 |-- bootstrap.yml
+|-- provisioning.yml
+|-- exec.sh
+|-- ssh_config
 |-- collections/
 |   `-- requirements.yml
-|-- inventories/
-|   `-- production/
-|       |-- hosts.yml
-|       `-- group_vars/
-|           |-- all/
-|           |   |-- main.yml
-|           |   `-- vault.yml.example
-|           `-- linux.yml
+|-- group_vars/
+|   |-- all.yml               (空)
+|   `-- ubuntu2604_sudows.yml
+|-- inventory/
+|   |-- hosts.yml
+|   |-- bootstrap.yml         (平文の初期ログイン情報)
+|   `-- provisioning.yml
 |-- roles/
-|   |-- bootstrap/
-|   |   |-- defaults/main.yml
-|   |   `-- tasks/main.yml
-|   `-- common/
-|       |-- defaults/main.yml
-|       `-- tasks/main.yml
+|   `-- .gitkeep              (中身なし)
 |-- scripts/
+|   |-- decrypt.sh
+|   |-- encrypt.sh
 |   |-- install-collections.sh
-|   `-- run-playbook.sh
-|-- provisioning.yml
-`-- site.yml
+|   `-- make-password.py
+`-- ssh/
+    `-- .gitkeep              (中身なし、秘密鍵の置き場)
 ```
 
-## 各ファイルの役割
+## 既知の不整合・未実装項目(要対応)
 
-* [site.yml](site.yml)
-    * provisioner_name の接続可否をローカルから判定する
-    * bootstrap と provisioning の実行順を制御する
-* [bootstrap.yml](bootstrap.yml)
-    * 接続不可ホストに対して bootstrap を実行する
-    * bootstrapで失敗したホストも再度有効化する
-* [provisioning.yml](provisioning.yml)
-    * provisioner_name で共通provisioningを実行する
-* [scripts/install-collections.sh](scripts/install-collections.sh)
-    * collection依存をインストールする
-* [scripts/run-playbook.sh](scripts/run-playbook.sh)
-    * site/bootstrap/provisioning の各playbookをオプションで実行する
-    * 引数未指定時は site を実行する
-    * 位置引数でホスト名またはグループ名を渡すと、その対象に限定して実行する
-    * Vault指定が未指定なら .vault_pass.txt の有無で --vault-password-file と --ask-vault-pass を自動切り替えする
-* [inventories/production/hosts.yml](inventories/production/hosts.yml)
-    * 対象ホストとグループを定義する
-* [inventories/production/group_vars/all/main.yml](inventories/production/group_vars/all/main.yml)
-    * 初期ユーザー名、ansible用ユーザー名、SSH鍵パス、共通変数を定義する
-* [inventories/production/group_vars/all/vault.yml.example](inventories/production/group_vars/all/vault.yml.example)
-    * vault化すべき秘密情報の雛形
-* [roles/bootstrap/tasks/main.yml](roles/bootstrap/tasks/main.yml)
-    * ansible用ユーザー作成、公開鍵登録、sudoers設定を行う
-* [roles/common/tasks/main.yml](roles/common/tasks/main.yml)
-    * provision時に共通適用したい設定の置き場
+1. `bootstrap.yml` が参照する `provisioning_group` / `provisioning_user` 変数がどこにも定義されていない
+2. `provisioning.yml` が参照する `roles: [timezone, hostname, hosts, ubuntu-base]` が `roles/` 配下に実体として存在しない
+3. `inventory/bootstrap.yml` に初期ログインパスワードが平文で書かれている(`vault化` されていない。テンプレートとしては要注意)
+4. `ssh_config` がどこからも実際には参照されていない
 
-## 初期設定
+## 初期設定(現状のワークフローに沿う場合)
 
-1. [inventories/production/hosts.yml](inventories/production/hosts.yml) のサンプルホストを実環境に合わせて変更する
-2. collectionをインストールする
-    ```bash
-    ./scripts/install-collections.sh
-    ```
-3. [inventories/production/group_vars/all/main.yml](inventories/production/group_vars/all/main.yml) の以下を環境に合わせて変更する
-    * bootstrap_user
-    * provisioner_name
-    * provisioner_private_key_file
-    * provisioner_public_key_file
-4. [inventories/production/group_vars/all/vault.yml.example](inventories/production/group_vars/all/vault.yml.example) を参考に、vault用の inventories/production/group_vars/all/vault.yml を作成して暗号化する
-5. provision用秘密鍵の公開鍵が [inventories/production/group_vars/all/main.yml](inventories/production/group_vars/all/main.yml) の provisioner_public_key_file で参照できることを確認する
-6. 接続用SSH鍵を `./ssh` 配下に配置する
-    * 公開鍵: `./ssh/{{ provisioner_name }}.pub`
-    * 秘密鍵: `./ssh/{{ provisioner_name }}.vault`（ansible-vaultで暗号化）
-
-秘密鍵の暗号化例:
-
-```bash
-mkdir -p ssh
-ansible-vault encrypt ssh/<provisioner_name> --output ssh/<provisioner_name>.vault
-rm -f ssh/<provisioner_name>
-```
-
-vaultファイル作成例:
-
-```bash
-cp inventories/production/group_vars/all/vault.yml.example inventories/production/group_vars/all/vault.yml
-ansible-vault encrypt inventories/production/group_vars/all/vault.yml
-```
+1. `./scripts/install-collections.sh` でcollectionをインストールする
+2. `inventory/hosts.yml` を対象ホストに合わせて編集する
+3. `inventory/bootstrap.yml` の初期ユーザー/パスワードを対象環境に合わせて編集する(本来はvault化推奨)
+4. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` を対象環境に合わせて編集する
+5. `./ssh/{{ ansible_private_key_file の名前 }}` に秘密鍵を配置する
+6. `provisioning.yml` が参照する roles(`timezone`, `hostname`, `hosts`, `ubuntu-base`)を `roles/` 配下に実装する(現状未実装)
+7. `bootstrap.yml` が参照する `provisioning_group` / `provisioning_user` 変数をどこかで定義する(現状未実装)
 
 ## 実行例
 
-通常実行:
-
 ```bash
-./scripts/run-playbook.sh
+./exec.sh                 # all グループに対して実行
+./exec.sh frontend        # frontend グループに限定して実行
+BOOTSTRAP_ASK_BECOME_PASS=1 ./exec.sh   # bootstrap時にbecomeパスワードを都度入力する
 ```
-
-特定ホストまたはグループを指定して実行する場合:
-
-```bash
-./scripts/run-playbook.sh web01
-./scripts/run-playbook.sh app db
-```
-
-bootstrapだけを実行する場合:
-
-```bash
-./scripts/run-playbook.sh --bootstrap-only
-```
-
-provisioningだけを実行する場合:
-
-```bash
-./scripts/run-playbook.sh --provisioning-only
-```
-
-## 変数の考え方
-
-ホスト・グループごとの差分は、inventory配下のgroup_varsやhost_varsで上書きします。
-
-例:
-
-* 初期ユーザー名がグループごとに違う場合
-* ansible用ユーザー名を環境ごとに変えたい場合
-* Linuxディストリビューションごとに管理者グループ名が違う場合
-
-たとえば、sudoではなくwheelを使う環境では、対象グループまたはホストで以下を上書きします。
-
-```yaml
-provisioner_primary_group: wheel
-provisioner_groups: []
-```
-
-primary groupのGIDを固定したい場合は、以下も設定できます。
-
-```yaml
-provisioner_primary_group_gid: "1001"
-```
-
-provisionerユーザーのUIDを固定したい場合は、以下を設定できます。
-
-```yaml
-provisioner_uid: "1001"
-```
-
-## 補足
-
-* [roles/common/tasks/main.yml](roles/common/tasks/main.yml) は最低限の雛形です。パッケージ導入やディレクトリ作成など、作業単位ごとにroleを追加して分割してください。
-* SSH秘密鍵そのものはgitに登録しません。必要な秘密情報はvaultに入れるか、実行端末上で参照する運用にしてください。
-* sudoersのvalidateでは /usr/sbin/visudo を使っています。対象OSでパスが異なる場合は調整してください。
