@@ -59,6 +59,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 ## group_vars
 
 * [group_vars/all.yml](group_vars/all.yml): `provisioning_group`, `provisioning_user` の共通定義
+    * **⚠ 注意**: `provisioning_user.public_key` はダミーのプレースホルダー鍵です。実ホストに対して `bootstrap.yml` を実行する前に、必ず実際の公開鍵に置き換えてください。
 
 ## ansible.cfg
 

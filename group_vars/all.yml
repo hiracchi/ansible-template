@@ -10,7 +10,8 @@ provisioning_user:
   groups:
     - sudo
   password: "!"
-  # SSH public key for authorized_keys (set your public key here)
+  # !!! WARNING: this is a dummy placeholder key. Replace with your real
+  # !!! public key before running bootstrap.yml against real hosts.
   public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyForAnsibleTemplateOnlyDummyKey ansible@example.com"
   # SSH private key for local ~/.ssh placement (optional)
   # private_key: |

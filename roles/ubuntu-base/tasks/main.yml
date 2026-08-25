@@ -4,4 +4,6 @@
   ansible.builtin.apt:
     name: "{{ ubuntu_base_packages }}"
     state: present
-  when: ubuntu_base_packages | length > 0
+  when:
+    - ubuntu_base_packages | length > 0
+    - ansible_facts['distribution'] == "Ubuntu"

@@ -17,6 +17,7 @@
         uid: "{{ provisioning_user.uid }}"
         group: "{{ provisioning_user.group }}"
         groups: "{{ provisioning_user.groups }}"
+        append: true
         password: "{{ provisioning_user.password }}"
         state: present
 
