@@ -27,12 +27,9 @@
         cache_valid_time: 600
         autoremove: true
         upgrade: "safe"
-  roles:
-    # - show-variables
-    - timezone
-    - hostname
-    - hosts
-    - ubuntu-base
+  # roles/ 配下に独自roleを追加したら、以下のように roles: に列挙して有効化してください
+  # roles:
+  #   - your-role-name
   tasks:
     - name: Install extra package
       become: true

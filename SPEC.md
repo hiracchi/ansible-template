@@ -32,18 +32,17 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## provisioning.yml
 
-* Play1 `Update apt source`: `/etc/apt/sources.list` の `http://` または `mirror://` 始まりの行を `mirror://mirrors.ubuntu.com/mirrors.txt` に置換
+* Play1 `Update apt source`: `/etc/apt/sources.list` の `http://` または `mirror://` 始まりの行を `mirror://mirrors.ubuntu.com/mirrors.txt` に置換(`os_family == Debian` の場合のみ)
 * Play2 `Setup all hosts`:
     * `pre_tasks` で `apt update`(`cache_valid_time: 600`)+ `autoremove` + `upgrade: safe`
-    * `roles: [timezone, hostname, hosts, ubuntu-base]` を適用
+    * `roles:` は既定でコメントアウトされており未使用(下記「roles 配下」参照)
     * 追加パッケージとして `locales-all` をインストール
 
 ## roles 配下
 
-* `roles/timezone`: `community.general.timezone` を用いたタイムゾーン設定 (デフォルト: `Asia/Tokyo`)
-* `roles/hostname`: `ansible.builtin.hostname` を用いたホスト名設定 (`inventory_hostname`)
-* `roles/hosts`: `/etc/hosts` の `127.0.0.1 localhost` および `127.0.1.1 {{ inventory_hostname }}` 設定
-* `roles/ubuntu-base`: Ubuntu共通の基本パッケージ (`curl`, `wget`, `git`, `vim`, `htop`, `ca-certificates` 等) の導入
+`roles/` は意図的に空(`.gitkeep` のみ)にしてあります。プロジェクトごとに必要な独自roleをここに追加し、
+`provisioning.yml` の `roles:` セクション(コメントアウト済み)を有効化して列挙する運用です。
+テンプレート自体は特定のroleを前提としません。
 
 ## inventory 配下
 
@@ -115,16 +114,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 |   |-- bootstrap.yml         (Ansible Vault暗号化済み)
 |   `-- provisioning.yml
 |-- roles/
-|   |-- hostname/
-|   |   `-- tasks/main.yml
-|   |-- hosts/
-|   |   `-- tasks/main.yml
-|   |-- timezone/
-|   |   |-- defaults/main.yml
-|   |   `-- tasks/main.yml
-|   `-- ubuntu-base/
-|       |-- defaults/main.yml
-|       `-- tasks/main.yml
+|   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/
 |   |-- decrypt.sh
 |   |-- encrypt.sh

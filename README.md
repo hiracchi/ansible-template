@@ -14,6 +14,7 @@ Ansibleで環境設定を行う汎用テンプレートプロジェクトです�
 5. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` を設定する
 6. `./ssh/{{ ansible_user }}` にプロビジョニング用の秘密鍵を配置する (または `bootstrap.yml` 実行時に自動配置)
 7. カレントディレクトリに `.vault_password` を配置する (または `exec.sh` 実行時に入力)
+8. 必要な独自roleを `roles/` 配下に追加し、`provisioning.yml` の `roles:` セクション(既定はコメントアウト)を有効化する
 
 ## 実行例
 
