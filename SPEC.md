@@ -72,9 +72,10 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## ssh_config
 
-リポジトリ直下の [ssh_config](ssh_config) はSSHクライアント向けの設定(`ForwardAgent`, `StrictHostKeyChecking accept-new`, `UserKnownHostsFile ./ssh_known_hosts` など)。
+リポジトリ直下の [ssh_config](ssh_config) はSSHクライアント向けの設定(`StrictHostKeyChecking accept-new`, `UserKnownHostsFile ./ssh_known_hosts` など)。
 `StrictHostKeyChecking accept-new` + プロジェクト直下の `ssh_known_hosts`(`.gitignore` 済み、ユーザー個人の `~/.ssh/known_hosts` とは分離)により、
 初回接続時のホスト鍵は自動登録しつつ、後から鍵が変わった場合(中間者攻撃や差し替え)は検知できるようにしている。
+`ForwardAgent` / `ForwardX11` は自動化に不要なため既定で無効にしている(必要な場合は個別ホスト/グループで設定を追加すること)。
 `ansible.cfg` の `ssh_args` 経由で Ansible の SSH 接続時に自動適用されます。
 
 ## collections

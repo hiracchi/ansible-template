@@ -1,9 +1,6 @@
 Host *
-  ForwardAgent yes
   # Compression yes
   # CompressionLevel 9
-  ForwardX11 yes
-  ForwardX11Trusted yes
   ServerAliveInterval 60
   StrictHostKeyChecking accept-new
   UserKnownHostsFile ./ssh_known_hosts
