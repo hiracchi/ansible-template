@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 引数に与えたファイルをansible-vaultで復号化するスクリプト
-# カレントディレクトリに .vault_pass.txt というファイルが存在すればそのファイルをパスワードファイルとして使用する
+# カレントディレクトリに .vault_password というファイルが存在すればそのファイルをパスワードファイルとして使用する
 # 例: ./decrypt.sh group_vars/all.yml
 
 if [ $# -eq 0 ]; then

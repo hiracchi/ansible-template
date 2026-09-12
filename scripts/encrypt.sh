@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 引数に与えたファイルをansible-vaultで暗号化するスクリプト
-# カレントディレクトリに .vault_pass.txt というファイルが存在すればそのファイルをパスワードファイルとして使用する
+# カレントディレクトリに .vault_password というファイルが存在すればそのファイルをパスワードファイルとして使用する
 # 例: ./encrypt.sh group_vars/all.yml
 
 if [ $# -eq 0 ]; then

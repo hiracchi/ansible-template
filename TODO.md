@@ -12,5 +12,8 @@
 - [x] `provisioning_user` のsudoersがNOPASSWD ALLだったのをやめ、`group_vars/all.yml` の `provisioning_user.password`(ハッシュ)+ `inventory/provisioning.yml` の `ansible_become_password`(Vault管理)によるパスワード認証必須のsudoに変更
 - [x] sshd_configの強化(`PasswordAuthentication no` / `ChallengeResponseAuthentication no` / `PermitRootLogin no`)を `provisioning.yml` の `Harden sshd` play で対応
 - [x] ファイアウォール(ufw)の設定を `provisioning.yml` の `Configure firewall (ufw)` play で対応(SSHポート許可 → デフォルトdeny → 有効化の順)
+- [x] `exec.sh` の未定義変数 `${ASK_PASS}` を削除
+- [x] `scripts/encrypt.sh` / `scripts/decrypt.sh` のコメントの古いファイル名 `.vault_pass.txt` を `.vault_password` に修正
+- [x] 未使用かつ壊れていた(誤ったinventory参照、実在しない `reboot.yml` を呼ぶ)`reboot_system()` / `ask_yes_or_no()` を `exec.sh` から削除
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。

@@ -13,7 +13,6 @@
 2. 接続できれば `do_provisioning()` に進み、`provisioning.yml` を実行する
 3. 接続できなければ `initialize()` で `inventory/bootstrap.yml` の変数(`ansible_user: ubuntu` など)を使い `bootstrap.yml` を実行する
 4. bootstrap後に再度 `check_connect()` を行い、成功すれば `do_provisioning()` を実行する。失敗したらエラー終了する
-5. 実行末尾に `reboot_system()` が定義されているが呼び出しはコメントアウトされている(未使用)
 
 引数: 第1引数がグループ/ホスト名として `GROUP` に入り、`ansible-playbook -l ${GROUP}` に渡される(省略時は `all`)。
 

@@ -24,20 +24,6 @@ if [ -f ./.vault_password ]; then
     ASK_VAULT_PASS="--vault-password-file ./.vault_password"
 fi
 
-ask_yes_or_no() {
-    while true ; do
-        read -p "$1 (y/n)?" answer
-        case $answer in
-            [yY] | [yY]es | YES )
-                return 0;;
-            [nN] | [nN]o | NO )
-                return 1;;
-            * ) echo "Please answer yes or no.";;
-        esac
-    done
-}
-
-
 check_connect()
 {
     echo "checking connection using ssh..."
@@ -57,7 +43,6 @@ initialize()
     echo "initialize ..."
     ansible-playbook \
         ${VERBOSE} ${DRY_RUN} \
-        ${ASK_PASS} \
         ${ASK_VAULT_PASS} \
         -i inventory/hosts.yml \
         --extra-vars="@inventory/bootstrap.yml" \
@@ -83,19 +68,6 @@ do_provisioning()
     echo "done."
 }
 
-reboot_system()
-{
-    echo "reboot ..."
-    ansible-playbook \
-        ${VERBOSE} ${DRY_RUN} \
-        ${ASK_VAULT_PASS} \
-        -i inventory/provisioning.yml \
-        -l ${GROUP} \
-        reboot.yml \
-        $*
-    echo "done."
-}
-
 # main
 if [ -f ansible.log ]; then
     rm ansible.log
@@ -117,6 +89,3 @@ else
 
     do_provisioning "$@"
 fi
-
-#echo "reboot? "
-#(! ask_yes_or_no) || reboot_system

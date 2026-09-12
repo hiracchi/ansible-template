@@ -12,7 +12,8 @@
 | 4 | `ansible.cfg` の `allow_world_readable_tmpfiles = True` でリモートの一時ファイルがworld-readableになっていた | `4dedf02` |
 | 5 | `provisioning_user` のsudoersが `NOPASSWD ALL` だった(SSH秘密鍵漏洩だけでroot化可能) | `fef18d2` |
 | 6 | sshd_configが未強化(パスワード認証・root直接ログインが許可されたままになり得た) | `d9beaa3` |
-| 7 | ファイアウォール未設定(全ポート無防備だった) | `provisioning.yml`(未コミット) |
+| 7 | ファイアウォール未設定(全ポート無防備だった) | `ccbc010` |
+| 8 | `exec.sh:60` の未定義変数 `${ASK_PASS}`、`scripts/encrypt.sh`/`decrypt.sh` の古いコメント(`.vault_pass.txt`)、壊れて未使用だった `reboot_system()`/`ask_yes_or_no()`(誤ったinventory参照 `-i inventory/provisioning.yml`、実在しない `reboot.yml` を呼んでいた) | `exec.sh`等(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -24,12 +25,6 @@
   鍵+パスワードの両方が漏れた場合の被害はrootフル権限になる点は変わらない(トレードオフとして許容する方針で合意済み)。
 - **fail2ban/自動アップデート等、初期設定の定番項目がまだ未実装**(ファイアウォールはufwで対応済み)。`roles/` を意図的に空に
   している設計自体は妥当だが、サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
-
-### バグ・整合性
-
-- `exec.sh:60` の `${ASK_PASS}` が未定義変数のまま残っている(死んだ変数、実害はないが紛らわしい)
-- `scripts/encrypt.sh:4` / `scripts/decrypt.sh:4` のコメントに古いファイル名 `.vault_pass.txt` が残っている(実際は `.vault_password`)
-- `reboot_system()`(`exec.sh:86-96`)が定義だけで呼び出しはコメントアウトのまま放置されている
 
 ### 「OSの初期設定から」という目標に対するギャップ
 
