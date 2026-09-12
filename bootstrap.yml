@@ -1,7 +1,19 @@
 - name: Setup Ansible User
   hosts: all
-  gather_facts: true
+  gather_facts: false
   become: false
+  pre_tasks:
+    # 素のOSイメージ(Pythonが入っていない最小イメージ等)にも対応するため、
+    # gather_facts(Pythonが必要)より前にrawモジュールでPythonの有無を
+    # 確認し、なければインストールする。Debian/Ubuntu系のみを対象にして
+    # いる(このテンプレートの他の箇所と同じ前提)。
+    - name: Ensure python3 is installed (raw, for hosts without Python)
+      ansible.builtin.raw: command -v python3 >/dev/null 2>&1 || (apt-get update && apt-get install -y python3)
+      become: true
+      changed_when: false
+
+    - name: Gather facts now that Python is available
+      ansible.builtin.setup:
   tasks:
     - name: Add provisioning_groups
       become: true

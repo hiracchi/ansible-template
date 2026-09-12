@@ -21,7 +21,10 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## bootstrap.yml
 
-* play名 `Setup Ansible User`、`hosts: all`、`become: false`(各タスクで個別に `become: true`)
+* play名 `Setup Ansible User`、`hosts: all`、`gather_facts: false`、`become: false`(各タスクで個別に `become: true`)
+* `pre_tasks`(Debian/Ubuntu系前提):
+    * Pythonが入っていない最小イメージにも対応するため、`gather_facts` の前に `ansible.builtin.raw` で `python3` の有無を確認し、なければ `apt-get install` する
+    * その後 `ansible.builtin.setup` で明示的にfactsを収集する(play全体の `gather_facts: false` を、Python未導入ホストでも失敗しないようにするための代替)
 * `provisioning_group.{group,gid}` でグループ作成(`gid` は省略可。未指定ならOSが自動採番する。既定はコメントアウトされている)
 * `provisioning_user.{user,uid,group,groups,password}` でユーザー作成(`uid` も同様に省略可・既定はコメントアウト)
 * `provisioning_user.public_key` を `authorized_key` に登録

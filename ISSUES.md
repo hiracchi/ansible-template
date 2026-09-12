@@ -16,7 +16,8 @@
 | 8 | `exec.sh:60` の未定義変数 `${ASK_PASS}`、`scripts/encrypt.sh`/`decrypt.sh` の古いコメント(`.vault_pass.txt`)、壊れて未使用だった `reboot_system()`/`ask_yes_or_no()`(誤ったinventory参照 `-i inventory/provisioning.yml`、実在しない `reboot.yml` を呼んでいた) | `2f783ef` |
 | 9 | sudoersが `runas: ALL` だった(root以外へのbecomeは使っていないのに昇格先が無制限) | `ff027f3` |
 | 10 | fail2banが未導入だった(ブルートフォース/接続試行の乱発に対する防御がなかった) | `2108d54` |
-| 11 | `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が固定値で、既存ユーザーと衝突する可能性があった | `bootstrap.yml`等(未コミット) |
+| 11 | `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が固定値で、既存ユーザーと衝突する可能性があった | `1c3d680` |
+| 12 | Pythonが入っていない最小イメージに `bootstrap.yml` が対応していなかった | `bootstrap.yml`(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -29,11 +30,6 @@
   意図的なトレードオフ(合意済み)。代わりに `runas: root` への限定 + 専用sudoログでリスクを下げている。
 - **自動アップデート等、初期設定の定番項目がまだ未実装**(ファイアウォールはufw、侵入防御はfail2banで対応済み)。`roles/` を
   意図的に空にしている設計自体は妥当だが、サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
-
-### 「OSの初期設定から」という目標に対するギャップ
-
-- **Pythonが入っていない最小イメージへの対応がない**: `bootstrap.yml` はいきなり `gather_facts` や通常モジュールを使うため、
-  Python未導入のホストには使えない。`ansible.builtin.raw` での事前インストールを検討する余地がある。
 
 ### GitHub運用に向けて
 
