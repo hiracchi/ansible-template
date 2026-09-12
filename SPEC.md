@@ -63,8 +63,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 ## ansible.cfg
 
 * `log_path = ./ansible.log`
-* `allow_world_readable_tmpfiles = True`
-* ホスト鍵検証(`host_key_checking`)は既定値(有効)のまま変更していない
+* ホスト鍵検証(`host_key_checking`)や一時ファイルの権限(`allow_world_readable_tmpfiles`)は既定値(無効)のまま変更していない
 * `[ssh_connection]`:
     * `pipelining = True`
     * `ssh_args = -F ./ssh_config -o ControlMaster=auto -o ControlPersist=60s`

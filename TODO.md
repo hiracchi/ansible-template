@@ -8,5 +8,6 @@
 - [x] `ssh/` 配下の秘密鍵が `.gitignore` で除外されておらず git 管理対象に入り得た不整合を修正(`ssh/*` + `!ssh/.gitkeep` を追加)
 - [x] ホスト鍵検証を無効化していた設定(`host_key_checking = False`, `StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null`)をTOFU方式(`accept-new` + プロジェクト直下の `ssh_known_hosts`)に変更
 - [x] `ssh_config` で全ホストに既定有効化されていた `ForwardAgent` / `ForwardX11` を無効化(自動化に不要なため)
+- [x] `ansible.cfg` の `allow_world_readable_tmpfiles = True` を削除し、リモートの一時ファイルが world-readable にならない既定値に戻した
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。
