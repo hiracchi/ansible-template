@@ -1,2 +1,4 @@
 .vault_password
 ansible.log
+ssh/*
+!ssh/.gitkeep

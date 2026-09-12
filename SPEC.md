@@ -91,7 +91,8 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## .gitignore
 
-`.vault_password` と `ansible.log` を除外。秘密鍵(`ssh/` 配下)は実体は git 管理対象外。
+`.vault_password` と `ansible.log` を除外。
+秘密鍵本体(`ssh/` 配下、`.gitkeep` を除く)も `ssh/*` + `!ssh/.gitkeep` で除外しており、実体が git 管理対象に入らないようにしている。
 
 ## ディレクトリ構成
 
