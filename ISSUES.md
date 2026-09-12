@@ -19,7 +19,7 @@
 | 11 | `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が固定値で、既存ユーザーと衝突する可能性があった | `1c3d680` |
 | 12 | Pythonが入っていない最小イメージに `bootstrap.yml` が対応していなかった | `2d66d24` |
 | 13 | 自動セキュリティ更新(unattended-upgrades)が未導入だった | `5445263` |
-| 14 | CI(ansible-lint/yamllint/syntax-check)が未整備、`ansible.posix` のバージョン未固定だった | `.github/workflows/ci.yml`等(未コミット) |
+| 14 | CI(ansible-lint/yamllint/syntax-check)が未整備、`ansible.posix` のバージョン未固定だった | `ac08b57` |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
