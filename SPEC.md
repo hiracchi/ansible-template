@@ -62,9 +62,9 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## ansible.cfg
 
-* `host_key_checking = False`
 * `log_path = ./ansible.log`
 * `allow_world_readable_tmpfiles = True`
+* ホスト鍵検証(`host_key_checking`)は既定値(有効)のまま変更していない
 * `[ssh_connection]`:
     * `pipelining = True`
     * `ssh_args = -F ./ssh_config -o ControlMaster=auto -o ControlPersist=60s`
@@ -72,7 +72,9 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## ssh_config
 
-リポジトリ直下の [ssh_config](ssh_config) はSSHクライアント向けの設定(`ForwardAgent`, `StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null` など)。
+リポジトリ直下の [ssh_config](ssh_config) はSSHクライアント向けの設定(`ForwardAgent`, `StrictHostKeyChecking accept-new`, `UserKnownHostsFile ./ssh_known_hosts` など)。
+`StrictHostKeyChecking accept-new` + プロジェクト直下の `ssh_known_hosts`(`.gitignore` 済み、ユーザー個人の `~/.ssh/known_hosts` とは分離)により、
+初回接続時のホスト鍵は自動登録しつつ、後から鍵が変わった場合(中間者攻撃や差し替え)は検知できるようにしている。
 `ansible.cfg` の `ssh_args` 経由で Ansible の SSH 接続時に自動適用されます。
 
 ## collections

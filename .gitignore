@@ -2,3 +2,4 @@
 ansible.log
 ssh/*
 !ssh/.gitkeep
+ssh_known_hosts

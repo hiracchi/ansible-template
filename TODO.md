@@ -6,5 +6,6 @@
 - [x] `bootstrap.yml` が参照する `provisioning_group` / `provisioning_user` 変数を定義する(`group_vars/all.yml` に定義)
 - [x] `ssh_config` を実際に使う経路を用意する(`ansible.cfg` の `ssh_args` に `-F ./ssh_config` を追加)
 - [x] `ssh/` 配下の秘密鍵が `.gitignore` で除外されておらず git 管理対象に入り得た不整合を修正(`ssh/*` + `!ssh/.gitkeep` を追加)
+- [x] ホスト鍵検証を無効化していた設定(`host_key_checking = False`, `StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null`)をTOFU方式(`accept-new` + プロジェクト直下の `ssh_known_hosts`)に変更
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。
