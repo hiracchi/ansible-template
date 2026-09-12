@@ -17,5 +17,6 @@
 - [x] 未使用かつ壊れていた(誤ったinventory参照、実在しない `reboot.yml` を呼ぶ)`reboot_system()` / `ask_yes_or_no()` を `exec.sh` から削除
 - [x] sudoersの `commands: ALL` は維持しつつ(Ansibleの汎用性上、コマンド許可リスト化は非現実的)、`runas: ALL` → `runas: root` に限定し、専用ログ(`/var/log/sudo-ansible.log`)で可観測性を確保
 - [x] fail2banを `provisioning.yml` の `Configure fail2ban` play で導入(`sshd` jail、`banaction = ufw` で既存のufwと連携)
+- [x] `group_vars/all.yml` の `uid`/`gid` 固定値(2000)を既定でコメントアウトし省略可に変更(未指定ならOSが自動採番。既存ユーザーとの衝突リスクを解消)
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。

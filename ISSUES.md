@@ -15,7 +15,8 @@
 | 7 | ファイアウォール未設定(全ポート無防備だった) | `ccbc010` |
 | 8 | `exec.sh:60` の未定義変数 `${ASK_PASS}`、`scripts/encrypt.sh`/`decrypt.sh` の古いコメント(`.vault_pass.txt`)、壊れて未使用だった `reboot_system()`/`ask_yes_or_no()`(誤ったinventory参照 `-i inventory/provisioning.yml`、実在しない `reboot.yml` を呼んでいた) | `2f783ef` |
 | 9 | sudoersが `runas: ALL` だった(root以外へのbecomeは使っていないのに昇格先が無制限) | `ff027f3` |
-| 10 | fail2banが未導入だった(ブルートフォース/接続試行の乱発に対する防御がなかった) | `provisioning.yml`(未コミット) |
+| 10 | fail2banが未導入だった(ブルートフォース/接続試行の乱発に対する防御がなかった) | `2108d54` |
+| 11 | `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が固定値で、既存ユーザーと衝突する可能性があった | `bootstrap.yml`等(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -39,7 +40,3 @@
 - CI(GitHub Actions)で `ansible-lint` / `yamllint` / `ansible-playbook --syntax-check` を回す仕組みがない
 - `collections/requirements.yml` の `ansible.posix` にバージョン指定がなく、意図しないcollection更新でplaybookが壊れるリスクがある
   (`community.general` は `sudoers` の `defaults` パラメータ利用に伴い `>=13.1.0` を指定済み)
-
-### 軽微
-
-- `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が環境によっては既存ユーザーと衝突する可能性がある

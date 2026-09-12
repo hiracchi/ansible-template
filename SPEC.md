@@ -22,8 +22,8 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 ## bootstrap.yml
 
 * play名 `Setup Ansible User`、`hosts: all`、`become: false`(各タスクで個別に `become: true`)
-* `provisioning_group.{group,gid}` でグループ作成
-* `provisioning_user.{user,uid,group,groups,password}` でユーザー作成
+* `provisioning_group.{group,gid}` でグループ作成(`gid` は省略可。未指定ならOSが自動採番する。既定はコメントアウトされている)
+* `provisioning_user.{user,uid,group,groups,password}` でユーザー作成(`uid` も同様に省略可・既定はコメントアウト)
 * `provisioning_user.public_key` を `authorized_key` に登録
 * `community.general.sudoers` で `provisioning_user.user` のsudoersを設定(name: `provisioning-user`)
     * `commands: ALL` は維持している。Ansibleの各モジュールは実行のたびに一時パスに生成されるスクリプトや apt/systemctl/useradd 等の多様なコマンドを呼び出すため、コマンド単位の許可リスト化は現実的ではないため

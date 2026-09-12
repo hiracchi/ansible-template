@@ -1,11 +1,17 @@
 ---
 provisioning_group:
   group: ansible
-  gid: 2000
+  # gid: 2000
+  # !!! gid は省略可(未指定ならOSが空いているgidを自動採番する)。
+  # !!! 固定したい積極的な理由(例: 複数ホストでNFS共有等によりgidを
+  # !!! 揃える必要がある)がある場合のみコメントを外すこと。既存の
+  # !!! ローカルユーザー/グループと衝突する可能性があるため注意。
 
 provisioning_user:
   user: ansible
-  uid: 2000
+  # uid: 2000
+  # !!! uid も同様に省略可(未指定ならOSが自動採番する)。固定する場合は
+  # !!! 対象ホストで衝突しない値かを事前に確認すること。
   group: ansible
   groups:
     - sudo
