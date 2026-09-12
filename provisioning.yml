@@ -40,3 +40,46 @@
           # - inxi
         state: present
 
+# ---------------------------------------------------------------------
+# sshd hardening
+# ---------------------------------------------------------------------
+# 前提: Debian/Ubuntu系(サービス名 `ssh`、sshdバイナリ `/usr/sbin/sshd`)。
+# provisioning.yml はprovisioning_userの鍵認証での接続確認後にしか実行されない
+# (exec.shのcheck_connectがゲートしている)ため、ここでパスワード認証を止めても
+# 実行中の接続経路を失うことはない。
+- name: Harden sshd
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure sshd_config includes /etc/ssh/sshd_config.d/*.conf
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*Include\s+/etc/ssh/sshd_config\.d/\*\.conf'
+        line: "Include /etc/ssh/sshd_config.d/*.conf"
+        insertafter: BOF
+        validate: "/usr/sbin/sshd -t -f %s"
+
+    # ファイル名を 00- で始め、Ubuntuのcloud-init由来の
+    # /etc/ssh/sshd_config.d/50-cloud-init.conf (PasswordAuthentication yes など)
+    # より先に読み込まれるようにしている。sshdは同じディレクティブが複数あれば
+    # 最初に見つかったものを採用するため、順序が逆だとこの設定は無視される。
+    - name: Harden sshd (disable password auth / root login)
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-ansible-hardening.conf
+        content: |
+          # Managed by ansible (provisioning.yml). Do not edit manually.
+          PasswordAuthentication no
+          ChallengeResponseAuthentication no
+          PermitRootLogin no
+        owner: root
+        group: root
+        mode: "0644"
+        validate: "/usr/sbin/sshd -t -f %s"
+      notify: Reload sshd
+  handlers:
+    - name: Reload sshd
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded
+

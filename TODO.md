@@ -10,5 +10,6 @@
 - [x] `ssh_config` で全ホストに既定有効化されていた `ForwardAgent` / `ForwardX11` を無効化(自動化に不要なため)
 - [x] `ansible.cfg` の `allow_world_readable_tmpfiles = True` を削除し、リモートの一時ファイルが world-readable にならない既定値に戻した
 - [x] `provisioning_user` のsudoersがNOPASSWD ALLだったのをやめ、`group_vars/all.yml` の `provisioning_user.password`(ハッシュ)+ `inventory/provisioning.yml` の `ansible_become_password`(Vault管理)によるパスワード認証必須のsudoに変更
+- [x] sshd_configの強化(`PasswordAuthentication no` / `ChallengeResponseAuthentication no` / `PermitRootLogin no`)を `provisioning.yml` の `Harden sshd` play で対応
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。
