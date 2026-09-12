@@ -61,6 +61,10 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
         * 管理者の固定IPを誤BANから除外したい場合の `ignoreip` 設定例をコメントアウトで用意
     * fail2banサービスを有効化・起動
     * 設定ミスはfail2ban自体の起動/reload失敗にとどまり、sshd_config/ufwと異なりSSH接続経路そのものは塞がないため、`sshd -t` のような事前検証は行っていない
+* Play6 `Configure automatic security updates`(Debian/Ubuntu系前提):
+    * `unattended-upgrades` パッケージをインストール
+    * `/etc/apt/apt.conf.d/20auto-upgrades` に `APT::Periodic::Update-Package-Lists`/`APT::Periodic::Unattended-Upgrade` を設定し、定期的なセキュリティ更新の自動適用を有効化
+    * 自動再起動は既定で無効のまま(`unattended-upgrades` パッケージ同梱の `50unattended-upgrades` の既定設定に従う)。稼働中のサービス/セッションへの影響が大きいため、テンプレートとしては意図的に踏み込んでいない
 
 ## roles 配下
 

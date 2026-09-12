@@ -119,7 +119,7 @@
     #     - ansible_facts['os_family'] == "Debian"
     #     - "'webservers' in group_names"
 
-    - name: Set ufw default policies
+    - name: Set ufw default policies  # noqa: args[module] (policyはloopで allow/deny のみを渡している。値がJinja変数のため静的解析できず誤検知する)
       community.general.ufw:
         direction: "{{ item.direction }}"
         policy: "{{ item.policy }}"
@@ -190,3 +190,33 @@
         name: fail2ban
         state: restarted
 
+# ---------------------------------------------------------------------
+# automatic security updates
+# ---------------------------------------------------------------------
+# 前提: Debian/Ubuntu系。unattended-upgradesパッケージが同梱する
+# /etc/apt/apt.conf.d/50unattended-upgrades の既定設定で、セキュリティ
+# 更新のみが対象になる(自動再起動は既定で無効のまま。有効化すると
+# 稼働中のサービス/セッションに影響するため、テンプレートとしては
+# 意図的に踏み込まない)。
+- name: Configure automatic security updates
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install unattended-upgrades
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Enable periodic apt updates and unattended upgrades
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          # Managed by ansible (provisioning.yml). Do not edit manually.
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        owner: root
+        group: root
+        mode: "0644"
+      when: ansible_facts['os_family'] == "Debian"
