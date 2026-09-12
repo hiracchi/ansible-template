@@ -11,7 +11,8 @@
 | 3 | `ssh_config` の `Host *` に `ForwardAgent yes` / `ForwardX11(Trusted) yes` が既定で有効化されていた | `d6e36bd` |
 | 4 | `ansible.cfg` の `allow_world_readable_tmpfiles = True` でリモートの一時ファイルがworld-readableになっていた | `4dedf02` |
 | 5 | `provisioning_user` のsudoersが `NOPASSWD ALL` だった(SSH秘密鍵漏洩だけでroot化可能) | `fef18d2` |
-| 6 | sshd_configが未強化(パスワード認証・root直接ログインが許可されたままになり得た) | `provisioning.yml`(未コミット) |
+| 6 | sshd_configが未強化(パスワード認証・root直接ログインが許可されたままになり得た) | `d9beaa3` |
+| 7 | ファイアウォール未設定(全ポート無防備だった) | `provisioning.yml`(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -21,8 +22,8 @@
 
 - **sudoersのNOPASSWD ALL自体は「全コマンド許可」のまま**: パスワード認証は必須にしたが、許可コマンド自体はALLのまま。
   鍵+パスワードの両方が漏れた場合の被害はrootフル権限になる点は変わらない(トレードオフとして許容する方針で合意済み)。
-- **ファイアウォール/fail2ban/自動アップデート等、初期設定の定番項目が未実装**: `roles/` を意図的に空にしている設計自体は妥当だが、
-  サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
+- **fail2ban/自動アップデート等、初期設定の定番項目がまだ未実装**(ファイアウォールはufwで対応済み)。`roles/` を意図的に空に
+  している設計自体は妥当だが、サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
 
 ### バグ・整合性
 

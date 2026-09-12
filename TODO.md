@@ -11,5 +11,6 @@
 - [x] `ansible.cfg` の `allow_world_readable_tmpfiles = True` を削除し、リモートの一時ファイルが world-readable にならない既定値に戻した
 - [x] `provisioning_user` のsudoersがNOPASSWD ALLだったのをやめ、`group_vars/all.yml` の `provisioning_user.password`(ハッシュ)+ `inventory/provisioning.yml` の `ansible_become_password`(Vault管理)によるパスワード認証必須のsudoに変更
 - [x] sshd_configの強化(`PasswordAuthentication no` / `ChallengeResponseAuthentication no` / `PermitRootLogin no`)を `provisioning.yml` の `Harden sshd` play で対応
+- [x] ファイアウォール(ufw)の設定を `provisioning.yml` の `Configure firewall (ufw)` play で対応(SSHポート許可 → デフォルトdeny → 有効化の順)
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。

@@ -42,6 +42,12 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `/etc/ssh/sshd_config.d/00-ansible-hardening.conf` に `PasswordAuthentication no` / `ChallengeResponseAuthentication no` / `PermitRootLogin no` を配置(`sshd -t` で検証してから配置、変更時のみ `service ssh reload` を通知)
     * ファイル名を `00-` にしているのは、Ubuntuのcloud-init由来 `50-cloud-init.conf`(`PasswordAuthentication yes` を含むことが多い)より先に評価させるため(sshdは同一ディレクティブの最初の指定を採用する)
     * `provisioning.yml` は `exec.sh` の `check_connect()` が鍵認証での接続成功を確認した後にしか実行されないため、パスワード認証を無効化しても実行中の接続経路(鍵認証)を失うことはない
+* Play4 `Configure firewall (ufw)`(Debian/Ubuntu系前提、RHEL系のfirewalldは対象外):
+    * `ufw` パッケージをインストール
+    * SSHポート(`ansible_port`、未設定なら22)を許可(**有効化より先に実行する順序を厳守**。逆にすると自分自身を締め出す)
+    * デフォルトポリシーを `incoming: deny` / `outgoing: allow` に設定
+    * `ufw` を有効化(`state: enabled`)
+    * webservers等グループ限定で追加ポートを開けたい場合のサンプルをコメントアウトで用意(`community.general.ufw` の `rule`/`port`/`when` を使う)
 
 ## roles 配下
 

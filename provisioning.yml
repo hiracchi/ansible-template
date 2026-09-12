@@ -83,3 +83,53 @@
         name: ssh
         state: reloaded
 
+# ---------------------------------------------------------------------
+# firewall (ufw)
+# ---------------------------------------------------------------------
+# 前提: Debian/Ubuntu系(ufw)。RHEL系(firewalld)は対象外。
+# SSHのポートを許可してから有効化する順序を厳守している(逆にすると
+# 自分自身を締め出す)。ポートは inventory 側で設定された ansible_port
+# (未設定なら22)を使う。
+- name: Configure firewall (ufw)
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install ufw
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Allow SSH through ufw (before enabling, to avoid lockout)
+      community.general.ufw:
+        rule: allow
+        port: "{{ ansible_port | default(22) }}"
+        proto: tcp
+      when: ansible_facts['os_family'] == "Debian"
+
+    # 追加でポートを開けたい場合は、対象グループを絞って以下のように足してください
+    # - name: Allow HTTP/HTTPS (webservers group)
+    #   community.general.ufw:
+    #     rule: allow
+    #     port: "{{ item }}"
+    #     proto: tcp
+    #   loop: ["80", "443"]
+    #   when:
+    #     - ansible_facts['os_family'] == "Debian"
+    #     - "'webservers' in group_names"
+
+    - name: Set ufw default policies
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+      when: ansible_facts['os_family'] == "Debian"
+
