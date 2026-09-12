@@ -25,7 +25,11 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 * `provisioning_group.{group,gid}` でグループ作成
 * `provisioning_user.{user,uid,group,groups,password}` でユーザー作成
 * `provisioning_user.public_key` を `authorized_key` に登録
-* `community.general.sudoers` で `provisioning_user.user` のsudoersを設定(name: `provisioning-user`、`nopassword: false` により本人のパスワード認証を必須にしている。`community.general.sudoers` は `nopassword` を省略すると既定で `true`(NOPASSWD)になる点に注意)
+* `community.general.sudoers` で `provisioning_user.user` のsudoersを設定(name: `provisioning-user`)
+    * `commands: ALL` は維持している。Ansibleの各モジュールは実行のたびに一時パスに生成されるスクリプトや apt/systemctl/useradd 等の多様なコマンドを呼び出すため、コマンド単位の許可リスト化は現実的ではないため
+    * `nopassword: false` により本人のパスワード認証を必須にしている(`community.general.sudoers` は `nopassword` を省略すると既定で `true`=NOPASSWDになる点に注意)
+    * `runas: root` に限定(`ALL` にはしていない。このテンプレートではroot以外へのbecomeを使わないため、昇格先を絞ってリスクを下げる)
+    * `defaults: ['logfile="/var/log/sudo-ansible.log"']` により、このユーザーのsudo実行内容を専用ログに記録する(`community.general` 13.1.0以降が必要。`collections/requirements.yml` でバージョン指定済み)
 * `provisioning_user.private_key` が定義されていれば、localhost側 `./ssh/{{ provisioning_user.user }}` が未作成の場合のみ書き出す(次回ログオン用)
 * 変数は `group_vars/all.yml` に定義済み
 
@@ -92,7 +96,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## collections
 
-[collections/requirements.yml](collections/requirements.yml): `ansible.posix`, `community.general`
+[collections/requirements.yml](collections/requirements.yml): `ansible.posix`, `community.general`(`>=13.1.0`。`sudoers` モジュールの `defaults` パラメータを使用するため)
 `scripts/install-collections.sh` で `ansible-galaxy collection install -r collections/requirements.yml` を実行する。
 
 ## Vault関連スクリプト

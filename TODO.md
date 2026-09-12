@@ -15,5 +15,6 @@
 - [x] `exec.sh` の未定義変数 `${ASK_PASS}` を削除
 - [x] `scripts/encrypt.sh` / `scripts/decrypt.sh` のコメントの古いファイル名 `.vault_pass.txt` を `.vault_password` に修正
 - [x] 未使用かつ壊れていた(誤ったinventory参照、実在しない `reboot.yml` を呼ぶ)`reboot_system()` / `ask_yes_or_no()` を `exec.sh` から削除
+- [x] sudoersの `commands: ALL` は維持しつつ(Ansibleの汎用性上、コマンド許可リスト化は非現実的)、`runas: ALL` → `runas: root` に限定し、専用ログ(`/var/log/sudo-ansible.log`)で可観測性を確保
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。

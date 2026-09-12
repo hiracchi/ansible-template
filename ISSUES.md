@@ -13,7 +13,8 @@
 | 5 | `provisioning_user` のsudoersが `NOPASSWD ALL` だった(SSH秘密鍵漏洩だけでroot化可能) | `fef18d2` |
 | 6 | sshd_configが未強化(パスワード認証・root直接ログインが許可されたままになり得た) | `d9beaa3` |
 | 7 | ファイアウォール未設定(全ポート無防備だった) | `ccbc010` |
-| 8 | `exec.sh:60` の未定義変数 `${ASK_PASS}`、`scripts/encrypt.sh`/`decrypt.sh` の古いコメント(`.vault_pass.txt`)、壊れて未使用だった `reboot_system()`/`ask_yes_or_no()`(誤ったinventory参照 `-i inventory/provisioning.yml`、実在しない `reboot.yml` を呼んでいた) | `exec.sh`等(未コミット) |
+| 8 | `exec.sh:60` の未定義変数 `${ASK_PASS}`、`scripts/encrypt.sh`/`decrypt.sh` の古いコメント(`.vault_pass.txt`)、壊れて未使用だった `reboot_system()`/`ask_yes_or_no()`(誤ったinventory参照 `-i inventory/provisioning.yml`、実在しない `reboot.yml` を呼んでいた) | `2f783ef` |
+| 9 | sudoersが `runas: ALL` だった(root以外へのbecomeは使っていないのに昇格先が無制限) | `bootstrap.yml`等(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -21,8 +22,9 @@
 
 ### セキュリティ関連
 
-- **sudoersのNOPASSWD ALL自体は「全コマンド許可」のまま**: パスワード認証は必須にしたが、許可コマンド自体はALLのまま。
-  鍵+パスワードの両方が漏れた場合の被害はrootフル権限になる点は変わらない(トレードオフとして許容する方針で合意済み)。
+- **sudoersの `commands: ALL` 自体は維持している**: Ansibleの各モジュールは実行のたびに一時パスのスクリプトや
+  apt/systemctl/useradd等の多様なコマンドを呼び出すため、コマンド単位の許可リスト化は現実的でないという判断による
+  意図的なトレードオフ(合意済み)。代わりに `runas: root` への限定 + 専用sudoログでリスクを下げている。
 - **fail2ban/自動アップデート等、初期設定の定番項目がまだ未実装**(ファイアウォールはufwで対応済み)。`roles/` を意図的に空に
   している設計自体は妥当だが、サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
 
@@ -34,7 +36,8 @@
 ### GitHub運用に向けて
 
 - CI(GitHub Actions)で `ansible-lint` / `yamllint` / `ansible-playbook --syntax-check` を回す仕組みがない
-- `collections/requirements.yml` にバージョン指定がなく、意図しないcollection更新でplaybookが壊れるリスクがある
+- `collections/requirements.yml` の `ansible.posix` にバージョン指定がなく、意図しないcollection更新でplaybookが壊れるリスクがある
+  (`community.general` は `sudoers` の `defaults` パラメータ利用に伴い `>=13.1.0` を指定済み)
 
 ### 軽微
 

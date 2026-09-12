@@ -27,14 +27,21 @@
         user: "{{ provisioning_user.user }}"
         key: "{{ provisioning_user.public_key }}"
 
+    # commands: ALL は維持している。Ansibleの各モジュールは実行のたびに
+    # 一時パスに生成されるスクリプトや apt/systemctl/useradd 等の多様な
+    # コマンドを呼び出すため、コマンド単位の許可リスト化は現実的ではない。
+    # 代わりに runas を root に絞り、sudo実行内容を専用ログに残すことで
+    # 昇格経路と可観測性の両面からリスクを下げている。
     - name: Edit sudoers for provisioning_user
       become: true
       community.general.sudoers:
         name: provisioning-user
         user: "{{ provisioning_user.user }}"
         commands: ALL
-        runas: ALL
+        runas: root
         nopassword: false
+        defaults:
+          - 'logfile="/var/log/sudo-ansible.log"'
         state: present
 
     - name: Check private key file exists on localhost
