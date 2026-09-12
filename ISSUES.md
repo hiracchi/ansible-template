@@ -18,7 +18,8 @@
 | 10 | fail2banが未導入だった(ブルートフォース/接続試行の乱発に対する防御がなかった) | `2108d54` |
 | 11 | `group_vars/all.yml` の `uid: 2000` / `gid: 2000` が固定値で、既存ユーザーと衝突する可能性があった | `1c3d680` |
 | 12 | Pythonが入っていない最小イメージに `bootstrap.yml` が対応していなかった | `2d66d24` |
-| 13 | 自動セキュリティ更新(unattended-upgrades)が未導入だった | `provisioning.yml`(未コミット) |
+| 13 | 自動セキュリティ更新(unattended-upgrades)が未導入だった | `5445263` |
+| 14 | CI(ansible-lint/yamllint/syntax-check)が未整備、`ansible.posix` のバージョン未固定だった | `.github/workflows/ci.yml`等(未コミット) |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
@@ -31,9 +32,3 @@
   意図的なトレードオフ(合意済み)。代わりに `runas: root` への限定 + 専用sudoログでリスクを下げている。
 - **初期設定の定番項目は一通り出揃った**(ファイアウォール=ufw、侵入防御=fail2ban、自動更新=unattended-upgrades)。`roles/` を
   意図的に空にしている設計自体は妥当だが、サンプルroleが1つもないため、利用者が何を書けばいいか迷う可能性がある。
-
-### GitHub運用に向けて
-
-- CI(GitHub Actions)で `ansible-lint` / `yamllint` / `ansible-playbook --syntax-check` を回す仕組みがない
-- `collections/requirements.yml` の `ansible.posix` にバージョン指定がなく、意図しないcollection更新でplaybookが壊れるリスクがある
-  (`community.general` は `sudoers` の `defaults` パラメータ利用に伴い `>=13.1.0` を指定済み)

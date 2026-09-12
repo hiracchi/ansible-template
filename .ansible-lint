@@ -1,0 +1,5 @@
+---
+exclude_paths:
+  # Ansible Vaultで全体暗号化されており、暗号化状態ではinventoryとして
+  # 静的解析できないため対象外にする
+  - inventory/bootstrap.yml

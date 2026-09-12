@@ -20,5 +20,7 @@
 - [x] `group_vars/all.yml` の `uid`/`gid` 固定値(2000)を既定でコメントアウトし省略可に変更(未指定ならOSが自動採番。既存ユーザーとの衝突リスクを解消)
 - [x] `bootstrap.yml` がPython未導入の最小イメージに対応できるよう、`gather_facts` 前に `raw` モジュールで `python3` を確認・インストールするよう変更
 - [x] 自動セキュリティ更新(unattended-upgrades)を `provisioning.yml` の `Configure automatic security updates` play で導入
+- [x] CI(GitHub Actions)で `yamllint` / `ansible-playbook --syntax-check` / `ansible-lint` を実行する仕組みを追加(`.github/workflows/ci.yml`、`.yamllint`、`.ansible-lint`)
+- [x] `collections/requirements.yml` の `ansible.posix` にバージョン下限(`>=1.5.0`)を追加
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。

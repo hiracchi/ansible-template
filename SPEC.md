@@ -110,8 +110,15 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## collections
 
-[collections/requirements.yml](collections/requirements.yml): `ansible.posix`, `community.general`(`>=13.1.0`。`sudoers` モジュールの `defaults` パラメータを使用するため)
+[collections/requirements.yml](collections/requirements.yml): `ansible.posix`(`>=1.5.0`)、`community.general`(`>=13.1.0`。`sudoers` モジュールの `defaults` パラメータを使用するため)
 `scripts/install-collections.sh` で `ansible-galaxy collection install -r collections/requirements.yml` を実行する。
+
+## CI(GitHub Actions)
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml): `push`(mainブランチ)・`pull_request` で以下を実行する
+* `yamllint .`([.yamllint](.yamllint) 参照。`document-start` 無効化、`line-length` 緩和、Ansible流の `{ key: value }` インライン記法許容、ansible-lintとの互換設定、`.github/` 除外(GitHub Actionsの `on:` 等の予約キーがYAML1.1のtruthy値と衝突するため)を設定)
+* `ansible-playbook --syntax-check`(`bootstrap.yml` / `provisioning.yml`)
+* `ansible-lint`([.ansible-lint](.ansible-lint) 参照。`inventory/bootstrap.yml` はVault全体暗号化されており静的解析できないため対象外)
 
 ## Vault関連スクリプト
 
@@ -131,14 +138,19 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ```text
 .
+|-- .ansible-lint
 |-- .gitignore
 |-- .vault_password           (gitignore対象)
+|-- .yamllint
 |-- ansible.cfg
 |-- bootstrap.yml
 |-- provisioning.yml
 |-- exec.sh
 |-- ssh_config
 |-- TODO.md
+|-- .github/
+|   `-- workflows/
+|       `-- ci.yml
 |-- collections/
 |   `-- requirements.yml
 |-- group_vars/

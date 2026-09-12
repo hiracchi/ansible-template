@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Ansible and lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core>=2.15" ansible-lint yamllint
+
+      - name: Install required collections
+        run: ansible-galaxy collection install -r collections/requirements.yml
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-playbook syntax check
+        run: |
+          ansible-playbook -i inventory/hosts.yml --syntax-check bootstrap.yml
+          ansible-playbook -i inventory/hosts.yml --syntax-check provisioning.yml
+
+      - name: ansible-lint
+        run: ansible-lint

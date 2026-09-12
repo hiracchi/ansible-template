@@ -1,0 +1,26 @@
+---
+extends: default
+
+# GitHub Actionsのworkflowファイルは "on:" 等YAML1.1のtruthy値と衝突する
+# 予約キーを使うため対象外にする(GitHub Actions自体が別途スキーマ検証する)
+ignore:
+  - .github/
+
+rules:
+  # "---" ドキュメント開始マーカーの有無は統一していないため無効化
+  document-start: disable
+  # 秘密鍵/ハッシュ等、折り返せない長い1行の値を含むファイルがあるため緩和
+  line-length:
+    max: 200
+  # Ansibleのloop等でよく使う "{ key: value }" 形式のインラインdictを許容
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  # 以下はansible-lintが要求する互換設定(合わせないとansible-lintが
+  # このファイルを無視してしまう)
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
