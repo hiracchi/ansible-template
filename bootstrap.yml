@@ -34,7 +34,7 @@
         user: "{{ provisioning_user.user }}"
         commands: ALL
         runas: ALL
-        nopassword: true
+        nopassword: false
         state: present
 
     - name: Check private key file exists on localhost

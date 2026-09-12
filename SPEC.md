@@ -26,7 +26,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 * `provisioning_group.{group,gid}` でグループ作成
 * `provisioning_user.{user,uid,group,groups,password}` でユーザー作成
 * `provisioning_user.public_key` を `authorized_key` に登録
-* `community.general.sudoers` で `provisioning_user.user` にNOPASSWDのsudoersを設定(name: `provisioning-user`)
+* `community.general.sudoers` で `provisioning_user.user` のsudoersを設定(name: `provisioning-user`、`nopassword: false` により本人のパスワード認証を必須にしている。`community.general.sudoers` は `nopassword` を省略すると既定で `true`(NOPASSWD)になる点に注意)
 * `provisioning_user.private_key` が定義されていれば、localhost側 `./ssh/{{ provisioning_user.user }}` が未作成の場合のみ書き出す(次回ログオン用)
 * 変数は `group_vars/all.yml` に定義済み
 
@@ -54,11 +54,14 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `scripts/encrypt.sh` により Ansible Vault で暗号化管理
 * [inventory/provisioning.yml](inventory/provisioning.yml)
     * provisioning用ユーザー: `ansible_user: ansible`, `ansible_private_key_file: ./ssh/ansible`
+    * `ansible_become_password`: sudo(become)用パスワード(平文)。`group_vars/all.yml` の `provisioning_user.password`(ハッシュ)と同じ平文パスワードを設定する
+    * 実際の値を設定したら `scripts/encrypt.sh` で Vault 暗号化する運用(現状はダミー値のプレースホルダーが平文で入っている)
 
 ## group_vars
 
 * [group_vars/all.yml](group_vars/all.yml): `provisioning_group`, `provisioning_user` の共通定義
     * **⚠ 注意**: `provisioning_user.public_key` はダミーのプレースホルダー鍵です。実ホストに対して `bootstrap.yml` を実行する前に、必ず実際の公開鍵に置き換えてください。
+    * **⚠ 注意**: `provisioning_user.password` もダミーのプレースホルダーハッシュです。`scripts/make-password.py` で生成したハッシュに置き換え、その元になった平文パスワードを `inventory/provisioning.yml` の `ansible_become_password` に設定してください(sudoはNOPASSWDにしておらず、この2つが一致していないとbecomeが失敗します)。
 
 ## ansible.cfg
 
@@ -115,7 +118,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 |-- inventory/
 |   |-- hosts.yml
 |   |-- bootstrap.yml         (Ansible Vault暗号化済み)
-|   `-- provisioning.yml
+|   `-- provisioning.yml      (ansible_become_password設定後はVault暗号化する)
 |-- roles/
 |   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/

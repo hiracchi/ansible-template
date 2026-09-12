@@ -9,7 +9,12 @@ provisioning_user:
   group: ansible
   groups:
     - sudo
-  password: "!"
+  # !!! WARNING: this is a dummy placeholder hash and does not correspond to
+  # !!! any real password. Generate a real one with `scripts/make-password.py`
+  # !!! and set the SAME plaintext password as `ansible_become_password` in
+  # !!! inventory/provisioning.yml before running against real hosts.
+  # !!! sudo for this user requires this password (sudoers is NOT NOPASSWD).
+  password: "$6$dummySaltForAnsibleTemplate$ThisIsNotARealHashReplaceMeWithScriptsMakePasswordPyOutput"
   # !!! WARNING: this is a dummy placeholder key. Replace with your real
   # !!! public key before running bootstrap.yml against real hosts.
   public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyForAnsibleTemplateOnlyDummyKey ansible@example.com"

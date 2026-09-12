@@ -1,2 +1,8 @@
 ansible_user: ansible
 ansible_private_key_file: ./ssh/ansible
+# !!! WARNING: this is a dummy placeholder value. Set it to the SAME
+# !!! plaintext password whose hash is set in group_vars/all.yml
+# !!! (provisioning_user.password), then encrypt this file with
+# !!! `./scripts/encrypt.sh inventory/provisioning.yml` before running
+# !!! against real hosts. This is what lets sudo work without NOPASSWD.
+ansible_become_password: "CHANGE_ME"
