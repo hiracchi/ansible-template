@@ -51,6 +51,13 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * デフォルトポリシーを `incoming: deny` / `outgoing: allow` に設定
     * `ufw` を有効化(`state: enabled`)
     * webservers等グループ限定で追加ポートを開けたい場合のサンプルをコメントアウトで用意(`community.general.ufw` の `rule`/`port`/`when` を使う)
+* Play5 `Configure fail2ban`(Debian/Ubuntu系前提。`Configure firewall (ufw)` より後に実行する必要がある):
+    * `fail2ban` パッケージをインストール
+    * `/etc/fail2ban/jail.d/zz-ansible.local` に `sshd` jailの設定を配置(`banaction = ufw`、`bantime = 1h`、`findtime = 10m`、`maxretry = 5`)
+        * ファイル名を `zz-` にしているのは、fail2banのjail.d配下はiniとして「後から読んだ設定が勝つ」ため、Debianパッケージ同梱の `defaults-debian.conf` より確実に後で読ませるため(sshd_config.dの「最初の指定が勝つ」とは逆のセマンティクスなので注意)
+        * 管理者の固定IPを誤BANから除外したい場合の `ignoreip` 設定例をコメントアウトで用意
+    * fail2banサービスを有効化・起動
+    * 設定ミスはfail2ban自体の起動/reload失敗にとどまり、sshd_config/ufwと異なりSSH接続経路そのものは塞がないため、`sshd -t` のような事前検証は行っていない
 
 ## roles 配下
 

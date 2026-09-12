@@ -133,3 +133,60 @@
         state: enabled
       when: ansible_facts['os_family'] == "Debian"
 
+# ---------------------------------------------------------------------
+# fail2ban
+# ---------------------------------------------------------------------
+# 前提: Debian/Ubuntu系。banaction=ufw を使うため、必ず
+# 「Configure firewall (ufw)」play より後に実行する(このplayの後に
+# 定義していること自体が前提になっている)。
+# fail2banの設定ミスはfail2banサービス自体が起動/reloadに失敗するだけで、
+# sshd_config/ufwと違ってSSH接続経路そのものを塞ぐことはない(保護が
+# 効かなくなるだけ)ため、sshd -t のような事前検証は行っていない。
+- name: Configure fail2ban
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install fail2ban
+      ansible.builtin.apt:
+        name: fail2ban
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    # fail2banのjail.d配下はiniとして「後から読んだ設定が勝つ」
+    # (sshd_config.dの「最初の指定が勝つ」とは逆のセマンティクス)。
+    # Debianパッケージが同梱する /etc/fail2ban/jail.d/defaults-debian.conf
+    # より確実に後で読ませるため、アルファベット順で最後になる zz- を付けている。
+    - name: Configure fail2ban jail for sshd
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/zz-ansible.local
+        content: |
+          # Managed by ansible (provisioning.yml). Do not edit manually.
+          [DEFAULT]
+          banaction = ufw
+          bantime = 1h
+          findtime = 10m
+          maxretry = 5
+          # 管理者の固定IP等を誤BANから除外したい場合はここに追記する
+          # ignoreip = 127.0.0.1/8 ::1 203.0.113.0/24
+
+          [sshd]
+          enabled = true
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart fail2ban
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Ensure fail2ban is enabled and running
+      ansible.builtin.service:
+        name: fail2ban
+        enabled: true
+        state: started
+      when: ansible_facts['os_family'] == "Debian"
+  handlers:
+    - name: Restart fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
+
