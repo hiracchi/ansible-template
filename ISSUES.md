@@ -20,7 +20,7 @@
 | 12 | Pythonが入っていない最小イメージに `bootstrap.yml` が対応していなかった | `2d66d24` |
 | 13 | 自動セキュリティ更新(unattended-upgrades)が未導入だった | `5445263` |
 | 14 | CI(ansible-lint/yamllint/syntax-check)が未整備、`ansible.posix` のバージョン未固定だった | `ac08b57` |
-| 15 | `provisioning_user.password`(ハッシュ)と `ansible_become_password`(平文)が別々の値として二重管理されており、パスワード変更時に手動で同期する必要があった | (未コミット) |
+| 15 | `provisioning_user.password`(ハッシュ)と `ansible_become_password`(平文)が別々の値として二重管理されており、パスワード変更時に手動で同期する必要があった | `a6db850` |
 
 対応内容の詳細は各コミットメッセージ、および `SPEC.md` / `README.md` の該当箇所を参照。
 
