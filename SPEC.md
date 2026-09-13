@@ -27,6 +27,10 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * その後 `ansible.builtin.setup` で明示的にfactsを収集する(play全体の `gather_facts: false` を、Python未導入ホストでも失敗しないようにするための代替)
 * `provisioning_group.{group,gid}` でグループ作成(`gid` は省略可。未指定ならOSが自動採番する。既定はコメントアウトされている)
 * `provisioning_user.{user,uid,group,groups,password}` でユーザー作成(`uid` も同様に省略可・既定はコメントアウト)
+    * `provisioning_user.password` は平文パスワード。`ansible.builtin.user` の `password:` に渡す直前で
+      `password_hash('sha512', 65534 | random(seed=inventory_hostname) | string)` フィルタでハッシュ化する。
+      salt を省略すると実行のたびに異なるハッシュ文字列になり `changed` が毎回発生するため、
+      `inventory_hostname` をシードにした固定saltで冪等にしている(コントロールマシンに `passlib` が必要)
 * `provisioning_user.public_key` を `authorized_key` に登録
 * `community.general.sudoers` で `provisioning_user.user` のsudoersを設定(name: `provisioning-user`)
     * `commands: ALL` は維持している。Ansibleの各モジュールは実行のたびに一時パスに生成されるスクリプトや apt/systemctl/useradd 等の多様なコマンドを呼び出すため、コマンド単位の許可リスト化は現実的ではないため
@@ -82,14 +86,23 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `scripts/encrypt.sh` により Ansible Vault で暗号化管理
 * [inventory/provisioning.yml](inventory/provisioning.yml)
     * provisioning用ユーザー: `ansible_user: ansible`, `ansible_private_key_file: ./ssh/ansible`
-    * `ansible_become_password`: sudo(become)用パスワード(平文)。`group_vars/all.yml` の `provisioning_user.password`(ハッシュ)と同じ平文パスワードを設定する
-    * 実際の値を設定したら `scripts/encrypt.sh` で Vault 暗号化する運用(現状はダミー値のプレースホルダーが平文で入っている)
+    * `ansible_become_password: "{{ provisioning_user.password }}"`: `group_vars/all.yml` の
+      `provisioning_user.password`(平文)を直接参照するため、このファイル自体は秘密を含まず、
+      Vault暗号化は不要(以前はここに平文の `ansible_become_password` を直接書いてVault暗号化していたが、
+      `provisioning_user.password` と2箇所に同じ平文を持つ必要があり、パスワード変更時に手動で同期する
+      必要があった)
 
 ## group_vars
 
 * [group_vars/all.yml](group_vars/all.yml): `provisioning_group`, `provisioning_user` の共通定義
     * **⚠ 注意**: `provisioning_user.public_key` はダミーのプレースホルダー鍵です。実ホストに対して `bootstrap.yml` を実行する前に、必ず実際の公開鍵に置き換えてください。
-    * **⚠ 注意**: `provisioning_user.password` もダミーのプレースホルダーハッシュです。`scripts/make-password.py` で生成したハッシュに置き換え、その元になった平文パスワードを `inventory/provisioning.yml` の `ansible_become_password` に設定してください(sudoはNOPASSWDにしておらず、この2つが一致していないとbecomeが失敗します)。
+    * **⚠ 注意**: `provisioning_user.password` は**平文パスワード**です(ハッシュではありません)。
+      `bootstrap.yml` がアカウント作成時に `password_hash` フィルタでハッシュ化し、
+      `inventory/provisioning.yml` の `ansible_become_password` もこの値を直接参照するため、
+      設定・ローテーションが必要な箇所はここ1箇所のみ。ファイル全体はVault暗号化していないため、
+      実際の値を設定したら `scripts/encrypt-string.sh password` で**この値だけ**を暗号化し、
+      出力(`password: !vault |` ブロック)で該当行を置き換えること(現状はダミー値の
+      プレースホルダーが平文で入っている)
 
 ## ansible.cfg
 
@@ -123,11 +136,13 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 ## Vault関連スクリプト
 
 * [scripts/encrypt.sh](scripts/encrypt.sh) / [scripts/decrypt.sh](scripts/decrypt.sh)
-    * 引数のファイルを `ansible-vault encrypt/decrypt` する
+    * 引数のファイルを `ansible-vault encrypt/decrypt` する(ファイル全体を暗号化)
     * カレントディレクトリに `.vault_password` があればそれをパスワードファイルとして使う(`.gitignore` 済み)
     * `exec.sh` が参照する `.vault_password` とファイル名は一致している
-* [scripts/make-password.py](scripts/make-password.py)
-    * `passlib` の `sha512_crypt` でパスワードハッシュを生成する対話スクリプト
+* [scripts/encrypt-string.sh](scripts/encrypt-string.sh)
+    * `ansible-vault encrypt_string` で特定の値だけを `変数名: !vault |` 形式にインライン暗号化する
+      (ファイル全体を暗号化したくない場合に使う。例: `group_vars/all.yml` の `provisioning_user.password`)
+    * 平文はプロンプトで隠し入力する(`--prompt`)。`.vault_password` の有無による挙動は `encrypt.sh` と同じ
 
 ## .gitignore
 
@@ -154,18 +169,18 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 |-- collections/
 |   `-- requirements.yml
 |-- group_vars/
-|   `-- all.yml
+|   `-- all.yml                (provisioning_user.passwordのみ ansible-vault encrypt_string で暗号化)
 |-- inventory/
 |   |-- hosts.yml
 |   |-- bootstrap.yml         (Ansible Vault暗号化済み)
-|   `-- provisioning.yml      (ansible_become_password設定後はVault暗号化する)
+|   `-- provisioning.yml      (秘密を含まないためVault暗号化不要)
 |-- roles/
 |   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/
 |   |-- decrypt.sh
 |   |-- encrypt.sh
-|   |-- install-collections.sh
-|   `-- make-password.py
+|   |-- encrypt-string.sh
+|   `-- install-collections.sh
 `-- ssh/
     `-- .gitkeep              (秘密鍵の置き場)
 ```

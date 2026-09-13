@@ -22,6 +22,11 @@
         gid: "{{ provisioning_group.gid | default(omit) }}"
         state: present
 
+    # provisioning_user.password は平文(group_vars/all.yml で password 項目のみ
+    # ansible-vault encrypt_string で暗号化して管理する想定)。ここでハッシュ化
+    # する。salt をシードなしで生成すると毎回変わって実行のたびに changed に
+    # なってしまうため、inventory_hostname をシードにして冪等になるようにして
+    # いる(同じホスト・同じ平文なら常に同じハッシュ文字列になる)。
     - name: Add provisioning_users
       become: true
       ansible.builtin.user:
@@ -30,7 +35,7 @@
         group: "{{ provisioning_user.group }}"
         groups: "{{ provisioning_user.groups }}"
         append: true
-        password: "{{ provisioning_user.password }}"
+        password: "{{ provisioning_user.password | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
         state: present
 
     - name: Set up authorized_keys for ansible_user

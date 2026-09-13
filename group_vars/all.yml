@@ -15,12 +15,17 @@ provisioning_user:
   group: ansible
   groups:
     - sudo
-  # !!! WARNING: this is a dummy placeholder hash and does not correspond to
-  # !!! any real password. Generate a real one with `scripts/make-password.py`
-  # !!! and set the SAME plaintext password as `ansible_become_password` in
-  # !!! inventory/provisioning.yml before running against real hosts.
-  # !!! sudo for this user requires this password (sudoers is NOT NOPASSWD).
-  password: "$6$dummySaltForAnsibleTemplate$ThisIsNotARealHashReplaceMeWithScriptsMakePasswordPyOutput"
+  # !!! WARNING: this must be the REAL plaintext password (not a hash) once
+  # !!! you're ready to deploy. bootstrap.yml hashes it on the fly via the
+  # !!! password_hash filter (with a seeded salt, so the resulting hash stays
+  # !!! stable across runs), and inventory/provisioning.yml's
+  # !!! ansible_become_password references this same value directly - so
+  # !!! there is exactly one place to set/rotate the password.
+  # !!! This file is NOT vault-encrypted as a whole (unlike
+  # !!! inventory/bootstrap.yml), so once you set the real password, encrypt
+  # !!! just this value with `./scripts/encrypt-string.sh password` and
+  # !!! replace this whole line with its output (a "password: !vault |" block).
+  password: "CHANGE_ME"
   # !!! WARNING: this is a dummy placeholder key. Replace with your real
   # !!! public key before running bootstrap.yml against real hosts.
   public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePublicKeyForAnsibleTemplateOnlyDummyKey ansible@example.com"

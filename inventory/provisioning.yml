@@ -1,8 +1,8 @@
 ansible_user: ansible
 ansible_private_key_file: ./ssh/ansible
-# !!! WARNING: this is a dummy placeholder value. Set it to the SAME
-# !!! plaintext password whose hash is set in group_vars/all.yml
-# !!! (provisioning_user.password), then encrypt this file with
-# !!! `./scripts/encrypt.sh inventory/provisioning.yml` before running
-# !!! against real hosts. This is what lets sudo work without NOPASSWD.
-ansible_become_password: "CHANGE_ME"
+# ansible_become_password references group_vars/all.yml's provisioning_user.password
+# directly, so there's exactly one place to set/rotate the sudo (become) password.
+# This file therefore contains no literal secret and does not need Vault encryption
+# (protect the secret at its source instead: group_vars/all.yml's password field,
+# via ./scripts/encrypt-string.sh).
+ansible_become_password: "{{ provisioning_user.password }}"

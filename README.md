@@ -5,15 +5,26 @@ Ansibleで環境設定を行う汎用テンプレートプロジェクトです�
 * 詳しい仕様(各ファイルの役割、実行フロー、ディレクトリ構成)は [SPEC.md](SPEC.md) を参照してください。
 * タスク対応状況は [TODO.md](TODO.md) を参照してください。
 
+## 前提
+
+* コントロールマシン(このリポジトリを実行する側)に `passlib` が必要です
+  (`bootstrap.yml` がパスワードのハッシュ化に `password_hash` フィルタを使うため)。
+  `pip install passlib` 等でインストールしてください。
+
 ## 初期設定・セットアップ手順
 
 1. `./scripts/install-collections.sh` で必要なAnsible Collectionをインストールする
 2. `inventory/hosts.yml` を対象ホストに合わせて編集する
 3. `group_vars/all.yml` の `provisioning_group` / `provisioning_user` を対象環境に合わせて編集する (作成するAnsibleユーザー、SSH公開鍵など)。
-   `provisioning_user.password` は `./scripts/make-password.py` で生成したハッシュに置き換える (sudoはNOPASSWDにせず、パスワード認証を必須にしている)
+   `provisioning_user.password` には**平文の**パスワードをそのまま設定する(ハッシュ化は
+   `bootstrap.yml` が実行時に `password_hash` フィルタで行う。sudoはNOPASSWDにせず、パスワード認証を必須にしている)。
+   このファイルはファイル全体をVault暗号化してはいないため、設定したら
+   `./scripts/encrypt-string.sh password` で **この値だけ** を暗号化し、出力
+   (`password: !vault |` ブロック)で該当行を置き換える
 4. `inventory/bootstrap.yml` の初期ログイン情報 (bootstrap用) を必要に応じて編集し、`./scripts/encrypt.sh inventory/bootstrap.yml` でVault暗号化する
-5. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` / `ansible_become_password` を設定する。
-   `ansible_become_password` は手順3で生成したハッシュの元になった平文パスワードと同じ値を設定し、`./scripts/encrypt.sh inventory/provisioning.yml` でVault暗号化する
+5. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` を設定する
+   (`ansible_become_password` は `group_vars/all.yml` の `provisioning_user.password` を参照する形になっているため編集不要。
+   このファイル自体はもう秘密を含まないためVault暗号化も不要)
 6. `./ssh/{{ ansible_user }}` にプロビジョニング用の秘密鍵を配置する (または `bootstrap.yml` 実行時に自動配置)
 7. カレントディレクトリに `.vault_password` を配置する (または `exec.sh` 実行時に入力)
 8. 必要な独自roleを `roles/` 配下に追加し、`provisioning.yml` の `roles:` セクション(既定はコメントアウト)を有効化する

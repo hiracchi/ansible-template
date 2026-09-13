@@ -22,5 +22,11 @@
 - [x] 自動セキュリティ更新(unattended-upgrades)を `provisioning.yml` の `Configure automatic security updates` play で導入
 - [x] CI(GitHub Actions)で `yamllint` / `ansible-playbook --syntax-check` / `ansible-lint` を実行する仕組みを追加(`.github/workflows/ci.yml`、`.yamllint`、`.ansible-lint`)
 - [x] `collections/requirements.yml` の `ansible.posix` にバージョン下限(`>=1.5.0`)を追加
+- [x] `group_vars/all.yml` の `provisioning_user.password`(ハッシュ)と `inventory/provisioning.yml` の
+      `ansible_become_password`(平文)を別々に持ち、パスワード変更のたびに手動で同期する必要があった問題を解消。
+      `provisioning_user.password` を平文に一本化し(`bootstrap.yml` が `password_hash` フィルタで実行時にハッシュ化)、
+      `ansible_become_password` はこの値を直接参照するように変更。`group_vars/all.yml` はファイル全体を
+      Vault暗号化していないため、`password` の値だけを暗号化する `scripts/encrypt-string.sh` を追加し、
+      不要になった `scripts/make-password.py` を削除
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。
