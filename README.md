@@ -36,3 +36,17 @@ Ansibleで環境設定を行う汎用テンプレートプロジェクトです�
 ./exec.sh webservers      # webservers グループに限定して実行
 BOOTSTRAP_ASK_BECOME_PASS=1 ./exec.sh   # bootstrap時にbecomeパスワードを都度入力する
 ```
+
+## パスワードの変更/確認
+
+`group_vars/all.yml` はファイル全体をVault暗号化しておらず、`password` の値だけを個別にインライン暗号化
+しているため、`ansible-vault view`/`decrypt`(=`scripts/decrypt.sh`)はこのファイルには使えない。
+
+```bash
+# 変更(値を新しくして再暗号化。出力(`password: !vault |` ブロック)で
+# group_vars/all.yml の該当行を置き換える)
+./scripts/encrypt-string.sh password       # プロンプトで新しい平文パスワードを入力
+
+# 確認(復号して表示)
+./scripts/decrypt-string.sh provisioning_user.password
+```

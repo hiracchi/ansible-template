@@ -142,7 +142,15 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 * [scripts/encrypt-string.sh](scripts/encrypt-string.sh)
     * `ansible-vault encrypt_string` で特定の値だけを `変数名: !vault |` 形式にインライン暗号化する
       (ファイル全体を暗号化したくない場合に使う。例: `group_vars/all.yml` の `provisioning_user.password`)
-    * 平文はプロンプトで隠し入力する(`--prompt`)。`.vault_password` の有無による挙動は `encrypt.sh` と同じ
+    * 平文はプロンプトで隠し入力する(`--prompt`)。1行の値向け。複数行の値を暗号化したい場合は
+      `ansible-vault encrypt_string --stdin-name <name> < ファイル` を直接使う
+    * `.vault_password` の有無による挙動は `encrypt.sh` と同じ
+* [scripts/decrypt-string.sh](scripts/decrypt-string.sh)
+    * `group_vars/all.yml` 内のVault暗号化された値を復号して表示する(`ansible localhost -m debug` のラッパー)
+    * ファイル全体がVault暗号化されているわけではないため `ansible-vault view/decrypt` は使えず、
+      通常のvars解決経路(`-e @group_vars/all.yml` + `--vault-password-file`)で復号する
+    * 引数には `provisioning_user.password` のようなドット区切りの変数パスを渡す
+    * `.vault_password` の有無による挙動は `encrypt.sh`/`encrypt-string.sh` と同じ
 
 ## .gitignore
 
@@ -178,6 +186,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 |   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/
 |   |-- decrypt.sh
+|   |-- decrypt-string.sh
 |   |-- encrypt.sh
 |   |-- encrypt-string.sh
 |   `-- install-collections.sh

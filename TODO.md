@@ -28,5 +28,9 @@
       `ansible_become_password` はこの値を直接参照するように変更。`group_vars/all.yml` はファイル全体を
       Vault暗号化していないため、`password` の値だけを暗号化する `scripts/encrypt-string.sh` を追加し、
       不要になった `scripts/make-password.py` を削除
+- [x] `group_vars/all.yml` の `password` をインライン暗号化(`scripts/encrypt-string.sh`)にした後、
+      値を確認・変更する手段がなかった(このファイルは全体暗号化ではないため `ansible-vault view`/
+      `scripts/decrypt.sh` が使えない)。`ansible localhost -m debug -e @group_vars/all.yml` で
+      復号表示する `scripts/decrypt-string.sh` を追加
 
 `roles/` は独自role追加用の置き場として意図的に空にしてあり、対応不要(詳細は [SPEC.md](SPEC.md) 参照)。
