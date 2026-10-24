@@ -4,6 +4,28 @@ Ansibleで環境設定を行う汎用テンプレートプロジェクトです�
 
 * 詳しい仕様(各ファイルの役割、実行フロー、ディレクトリ構成)は [SPEC.md](SPEC.md) を参照してください。
 
+## 新規プロジェクトの作成
+
+このテンプレートから新しいプロジェクトを作るには、次のコマンドを実行します。
+プロジェクト名のディレクトリが作成され、テンプレートが clone されたうえで、新規の git リポジトリとして初期化されます。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hiracchi/ansible-template/main/scripts/new-project.sh | bash -s -- <プロジェクト名>
+```
+
+作成先の親ディレクトリを指定する場合は、末尾に続けて指定します。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hiracchi/ansible-template/main/scripts/new-project.sh | bash -s -- <プロジェクト名> <作成先の親ディレクトリ>
+```
+
+スクリプトの中身を確認してから実行したい場合は、ファイルに保存してから実行してください。
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/hiracchi/ansible-template/main/scripts/new-project.sh
+bash new-project.sh <プロジェクト名>
+```
+
 ## 前提
 
 [mise](https://mise.jdx.dev/) を使ってツールとPython仮想環境を用意します。
