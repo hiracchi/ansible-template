@@ -3,17 +3,24 @@
 Ansibleで環境設定を行う汎用テンプレートプロジェクトです。
 
 * 詳しい仕様(各ファイルの役割、実行フロー、ディレクトリ構成)は [SPEC.md](SPEC.md) を参照してください。
-* タスク対応状況は [TODO.md](TODO.md) を参照してください。
 
 ## 前提
 
-* コントロールマシン(このリポジトリを実行する側)に `passlib` が必要です
-  (`bootstrap.yml` がパスワードのハッシュ化に `password_hash` フィルタを使うため)。
-  `pip install passlib` 等でインストールしてください。
+[mise](https://mise.jdx.dev/) を使ってツールとPython仮想環境を用意します。
+
+```bash
+mise install          # Python を取得する
+mise run install      # .venv に Ansible / lint ツール / passlib と Ansible Collection をインストールする
+```
+
+`passlib` は `bootstrap.yml` がパスワードのハッシュ化に使う `password_hash` フィルタのために必要です
+(`requirements.txt` に含まれています)。
+以降のコマンドは `mise` の環境(`.venv`)上で実行します。`mise` を使わない場合は `requirements.txt` を自分で
+インストールし、`./scripts/install-collections.sh` を実行してください。
 
 ## 初期設定・セットアップ手順
 
-1. `./scripts/install-collections.sh` で必要なAnsible Collectionをインストールする
+1. `mise run install` で Python 依存と Ansible Collection をインストールする
 2. `inventory/hosts.yml` を対象ホストに合わせて編集する
 3. `group_vars/all.yml` の `provisioning_group` / `provisioning_user` を対象環境に合わせて編集する (作成するAnsibleユーザー、SSH公開鍵など)。
    `provisioning_user.password` には**平文の**パスワードをそのまま設定する(ハッシュ化は
@@ -28,6 +35,15 @@ Ansibleで環境設定を行う汎用テンプレートプロジェクトです�
 6. `./ssh/{{ ansible_user }}` にプロビジョニング用の秘密鍵を配置する (または `bootstrap.yml` 実行時に自動配置)
 7. カレントディレクトリに `.vault_password` を配置する (または `exec.sh` 実行時に入力)
 8. 必要な独自roleを `roles/` 配下に追加し、`provisioning.yml` の `roles:` セクション(既定はコメントアウト)を有効化する
+
+## CI のローカル実行
+
+検査(yamllint / syntax-check / ansible-lint)をローカルで実行できます。GitHub Actions は使用しません。
+
+```bash
+mise run ci           # 全検査を実行
+mise run yamllint     # 個別に実行する場合(syntax-check / ansible-lint も同様)
+```
 
 ## 実行例
 

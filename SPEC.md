@@ -124,12 +124,19 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 ## collections
 
 [collections/requirements.yml](collections/requirements.yml): `ansible.posix`(`>=1.5.0`)、`community.general`(`>=13.1.0`。`sudoers` モジュールの `defaults` パラメータを使用するため)
-`scripts/install-collections.sh` で `ansible-galaxy collection install -r collections/requirements.yml` を実行する。
+`mise run install`(または `scripts/install-collections.sh`)で `ansible-galaxy collection install -r collections/requirements.yml` を実行する。
 
-## CI(GitHub Actions)
+## ツールと仮想環境(mise)
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml): `push`(mainブランチ)・`pull_request` で以下を実行する
-* `yamllint .`([.yamllint](.yamllint) 参照。`document-start` 無効化、`line-length` 緩和、Ansible流の `{ key: value }` インライン記法許容、ansible-lintとの互換設定、`.github/` 除外(GitHub Actionsの `on:` 等の予約キーがYAML1.1のtruthy値と衝突するため)を設定)
+* [mise.toml](mise.toml): Python のバージョンを固定し、`.venv` を自動作成して有効化する(`_.python.venv`)
+* [requirements.txt](requirements.txt): `ansible-core` / `ansible-lint` / `yamllint` / `passlib` をバージョン固定で記載する
+* タスク: `install`(pip + collection)、`yamllint`、`syntax-check`、`ansible-lint`、`ci`(上の4つをまとめて実行)
+
+## CI(ローカルのみ)
+
+GitHub Actions は使用しない(ワークフローは削除済み。必要になった場合は git 履歴から復元できる)。
+検査はローカルで `mise run ci` を実行する。`ci` タスクの内容は以下のとおり。
+* `yamllint .`([.yamllint](.yamllint) 参照。`document-start` 無効化、`line-length` 緩和、Ansible流の `{ key: value }` インライン記法許容、ansible-lintとの互換設定、`.venv/` 除外を設定)
 * `ansible-playbook --syntax-check`(`bootstrap.yml` / `provisioning.yml`)
 * `ansible-lint`([.ansible-lint](.ansible-lint) 参照。`inventory/bootstrap.yml` はVault全体暗号化されており静的解析できないため対象外)
 
@@ -154,7 +161,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## .gitignore
 
-`.vault_password` と `ansible.log` を除外。
+`.vault_password`、`ansible.log`、`.venv/` を除外。
 秘密鍵本体(`ssh/` 配下、`.gitkeep` を除く)も `ssh/*` + `!ssh/.gitkeep` で除外しており、実体が git 管理対象に入らないようにしている。
 
 ## ディレクトリ構成
@@ -164,16 +171,15 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 |-- .ansible-lint
 |-- .gitignore
 |-- .vault_password           (gitignore対象)
+|-- .venv/                    (mise が作成、gitignore対象)
 |-- .yamllint
 |-- ansible.cfg
 |-- bootstrap.yml
+|-- mise.toml
 |-- provisioning.yml
+|-- requirements.txt
 |-- exec.sh
 |-- ssh_config
-|-- TODO.md
-|-- .github/
-|   `-- workflows/
-|       `-- ci.yml
 |-- collections/
 |   `-- requirements.yml
 |-- group_vars/
