@@ -1,10 +1,9 @@
 ---
 extends: default
 
-# GitHub Actionsのworkflowファイルは "on:" 等YAML1.1のtruthy値と衝突する
-# 予約キーを使うため対象外にする(GitHub Actions自体が別途スキーマ検証する)
 ignore:
-  - .github/
+  # mise が作成するローカル仮想環境(サードパーティのYAMLを含むため対象外)
+  - .venv/
 
 rules:
   # "---" ドキュメント開始マーカーの有無は統一していないため無効化

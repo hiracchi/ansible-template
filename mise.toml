@@ -1,0 +1,35 @@
+[tools]
+python = "3.13.17"
+
+# .venv を自動作成し、mise の環境に入るたびに有効化する
+[env]
+_.python.venv = { path = ".venv", create = true, uv_create_args = ["--seed"] }
+
+[tasks.install]
+description = "Python依存(requirements.txt)と Ansible コレクションをインストールする"
+run = [
+  "python -m pip install -r requirements.txt",
+  "ansible-galaxy collection install -r collections/requirements.yml",
+]
+
+[tasks.yamllint]
+description = "YAML を yamllint で検査する"
+depends = ["install"]
+run = "yamllint ."
+
+[tasks.syntax-check]
+description = "bootstrap.yml / provisioning.yml の構文チェック"
+depends = ["install"]
+run = [
+  "ansible-playbook -i inventory/hosts.yml --syntax-check bootstrap.yml",
+  "ansible-playbook -i inventory/hosts.yml --syntax-check provisioning.yml",
+]
+
+[tasks.ansible-lint]
+description = "ansible-lint で検査する"
+depends = ["install"]
+run = "ansible-lint"
+
+[tasks.ci]
+description = "CI と同じ検査をまとめて実行する(ローカルで実行)"
+depends = ["yamllint", "syntax-check", "ansible-lint"]
