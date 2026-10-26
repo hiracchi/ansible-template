@@ -1,0 +1,37 @@
+---
+# provisioning ユーザー(pdfansible)で接続できている状態で実行すること。
+# 初期ユーザーのローカルアカウントだけを対象にし、NIS/LDAP 側のユーザーには触れない。
+
+- name: Check whether the initial user exists as a local account
+  ansible.builtin.command:
+    cmd: "getent -s files passwd {{ disable_initial_user_name }}"
+  register: disable_initial_user_local
+  changed_when: false
+  failed_when: false
+
+- name: Set login shell of the initial user to nologin
+  become: true
+  ansible.builtin.user:
+    name: "{{ disable_initial_user_name }}"
+    shell: /usr/sbin/nologin
+  when: disable_initial_user_local.rc == 0
+
+- name: Lock password of the initial user
+  become: true
+  ansible.builtin.user:
+    name: "{{ disable_initial_user_name }}"
+    password_lock: true
+  when: disable_initial_user_local.rc == 0
+
+- name: Check sudo rules that mention the initial user
+  become: true
+  ansible.builtin.command:
+    cmd: "grep -rlw {{ disable_initial_user_name }} /etc/sudoers /etc/sudoers.d"
+  register: disable_initial_user_sudo
+  changed_when: false
+  failed_when: false
+
+- name: Warn when sudo rules still mention the initial user
+  ansible.builtin.debug:
+    msg: "sudo 設定に {{ disable_initial_user_name }} が残っています: {{ disable_initial_user_sudo.stdout_lines }}"
+  when: disable_initial_user_sudo.rc == 0

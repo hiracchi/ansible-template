@@ -1,0 +1,4 @@
+---
+# OS インストール直後に作成された初期ユーザー名。inventory/bootstrap.yml の ansible_user に合わせる。
+# ローカルに存在しない場合、このロールは何もしない。
+disable_initial_user_name: ubuntu

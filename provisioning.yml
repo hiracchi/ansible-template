@@ -27,9 +27,11 @@
         cache_valid_time: 600
         autoremove: true
         upgrade: "safe"
-  # roles/ 配下に独自roleを追加したら、以下のように roles: に列挙して有効化してください
-  # roles:
-  #   - your-role-name
+  # 初期ユーザーを無効化する(他の設定が成功した後に実行する)。roles/ 配下に独自roleを追加したら、
+  # 同じ roles: に列挙して有効化してください
+  roles:
+    - disable_initial_user
+    # - your-role-name
   tasks:
     - name: Install extra package
       become: true
@@ -45,7 +47,7 @@
 # ---------------------------------------------------------------------
 # 前提: Debian/Ubuntu系(サービス名 `ssh`、sshdバイナリ `/usr/sbin/sshd`)。
 # provisioning.yml はprovisioning_userの鍵認証での接続確認後にしか実行されない
-# (exec.shのcheck_connectがゲートしている)ため、ここでパスワード認証を止めても
+# (provision.shのcheck_connectがゲートしている)ため、ここでパスワード認証を止めても
 # 実行中の接続経路を失うことはない。
 - name: Harden sshd
   hosts: all
