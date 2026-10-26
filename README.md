@@ -50,13 +50,14 @@ mise run install      # .venv に Ansible / lint ツール / passlib と Ansible
    このファイルはファイル全体をVault暗号化してはいないため、設定したら
    `./scripts/encrypt-string.sh password` で **この値だけ** を暗号化し、出力
    (`password: !vault |` ブロック)で該当行を置き換える
-4. `inventory/bootstrap.yml` の初期ログイン情報 (bootstrap用) を必要に応じて編集し、`./scripts/encrypt.sh inventory/bootstrap.yml` でVault暗号化する
+4. `inventory/bootstrap.yml` の初期ログイン情報 (bootstrap用) を必要に応じて編集し、`./scripts/encrypt-file.sh inventory/bootstrap.yml` でVault暗号化する
 5. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` を設定する
    (`ansible_become_password` は `group_vars/all.yml` の `provisioning_user.password` を参照する形になっているため編集不要。
    このファイル自体はもう秘密を含まないためVault暗号化も不要)
 6. `./ssh/{{ ansible_user }}` にプロビジョニング用の秘密鍵を配置する (または `bootstrap.yml` 実行時に自動配置)
-7. カレントディレクトリに `.vault_password` を配置する (または `exec.sh` 実行時に入力)
-8. 必要な独自roleを `roles/` 配下に追加し、`provisioning.yml` の `roles:` セクション(既定はコメントアウト)を有効化する
+7. カレントディレクトリに `.vault_password` を配置する (または `provision.sh` / `bootstrap.sh` 実行時に入力)
+8. `disable_initial_user_name` (`roles/disable_initial_user/defaults/main.yml`、既定 `ubuntu`) を `inventory/bootstrap.yml` の `ansible_user` に合わせる
+9. 必要な独自roleを `roles/` 配下に追加し、`provisioning.yml` の `roles:` セクションに列挙して有効化する
 
 ## CI のローカル実行
 
@@ -70,15 +71,19 @@ mise run yamllint     # 個別に実行する場合(syntax-check / ansible-lint 
 ## 実行例
 
 ```bash
-./exec.sh                 # all グループに対して実行
-./exec.sh webservers      # webservers グループに限定して実行
-BOOTSTRAP_ASK_BECOME_PASS=1 ./exec.sh   # bootstrap時にbecomeパスワードを都度入力する
+# 新規ホストの初期化(初期ユーザーで接続し、provisioning ユーザーを作る。初期化済みホストは拒否される)
+./bootstrap.sh web-01
+BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを都度入力する
+
+# 初期化済みホストへの適用(接続できないホストがあれば中止する)
+./provision.sh                 # all グループに対して実行
+./provision.sh webservers      # webservers グループに限定して実行
 ```
 
 ## パスワードの変更/確認
 
 `group_vars/all.yml` はファイル全体をVault暗号化しておらず、`password` の値だけを個別にインライン暗号化
-しているため、`ansible-vault view`/`decrypt`(=`scripts/decrypt.sh`)はこのファイルには使えない。
+しているため、`ansible-vault view`/`decrypt`(=`scripts/decrypt-file.sh`)はこのファイルには使えない。
 
 ```bash
 # 変更(値を新しくして再暗号化。出力(`password: !vault |` ブロック)で

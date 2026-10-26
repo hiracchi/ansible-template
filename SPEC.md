@@ -2,19 +2,27 @@
 
 このリポジトリの現在の仕様まとめです。使い方(セットアップ手順・実行コマンド)は [README.md](README.md) を参照してください。
 
-## 実行は exec.sh に一本化
+## 実行入口は bootstrap.sh と provision.sh の2つ
 
-* [exec.sh](exec.sh) が唯一の実行入口
-    * `inventory/hosts.yml` / `inventory/bootstrap.yml` / `inventory/provisioning.yml` を使う
+* [bootstrap.sh](bootstrap.sh): 新規ホストを初期化する専用の入口。`bootstrap.yml` を実行する
+* [provision.sh](provision.sh): 初期化済みホストに `provisioning.yml` を適用する入口
+* どちらも `inventory/hosts.yml` を使う。接続情報は `bootstrap.sh` が `inventory/bootstrap.yml`、`provision.sh` が `inventory/provisioning.yml` から読む
 
-## exec.sh の実行フロー
+## bootstrap.sh の動作
 
-1. `check_connect()`: `inventory/provisioning.yml` の変数(`ansible_user: ansible` など)を `--extra-vars` で渡し、`ansible -a uptime` で対象グループに接続できるか確認する
-2. 接続できれば `do_provisioning()` に進み、`provisioning.yml` を実行する
-3. 接続できなければ `initialize()` で `inventory/bootstrap.yml` の変数(`ansible_user: ubuntu` など)を使い `bootstrap.yml` を実行する
-4. bootstrap後に再度 `check_connect()` を行い、成功すれば `do_provisioning()` を実行する。失敗したらエラー終了する
+1. 引数はホスト名のみ(1つ以上)。グループ名は指定できない
+2. 各ホストに対して `provisioning_user` で `ansible.builtin.ping` を実行し、接続できるものがあれば「初期化済み」とみなして中止する
+3. `bootstrap.yml` を `inventory/bootstrap.yml` の変数で実行する
+4. 失敗時は終了コードを返す。成功後は `./provision.sh` を実行するよう案内する
 
-引数: 第1引数がグループ/ホスト名として `GROUP` に入り、`ansible-playbook -l ${GROUP}` に渡される(省略時は `all`)。
+## provision.sh の動作
+
+1. 引数: 第1引数がグループ/ホスト名(省略時は `all`)。残りは `ansible-playbook` にそのまま渡す
+2. `check_connect()`: `provisioning_user` で `ansible.builtin.ping` を全対象に実行する。1台でも接続できなければ中止する(初期化は自動では行わない)
+3. `do_provisioning()`: `provisioning.yml` を実行する。失敗時は `ansible-playbook` の終了コードを返す
+
+`bootstrap.sh` と `provision.sh` を分けているのは、初期ユーザーを無効化した後に自動で初期化を試みて失敗するのを防ぐため。
+接続できないホストを自動で初期化しないことで、どの経路で接続しているかを明確にしている。
 
 Vaultパスワードは `./.vault_password` があれば `--vault-password-file` を使い、無ければ `--ask-vault-pass`。
 `BOOTSTRAP_ASK_BECOME_PASS=1` を環境変数で指定すると bootstrap 実行時に `--ask-become-pass` を追加する。
@@ -28,7 +36,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 * `provisioning_group.{group,gid}` でグループ作成(`gid` は省略可。未指定ならOSが自動採番する。既定はコメントアウトされている)
 * `provisioning_user.{user,uid,group,groups,password}` でユーザー作成(`uid` も同様に省略可・既定はコメントアウト)
     * `provisioning_user.password` は平文パスワード。`ansible.builtin.user` の `password:` に渡す直前で
-      `password_hash('sha512', 65534 | random(seed=inventory_hostname) | string)` フィルタでハッシュ化する。
+      `password_hash('sha512', '%04d' | format(65534 | random(seed=inventory_hostname)))` フィルタでハッシュ化する。salt は必ず4桁にそろえる(1〜2桁だと一部の環境で crypt が失敗したため)。
       salt を省略すると実行のたびに異なるハッシュ文字列になり `changed` が毎回発生するため、
       `inventory_hostname` をシードにした固定saltで冪等にしている(コントロールマシンに `passlib` が必要)
 * `provisioning_user.public_key` を `authorized_key` に登録
@@ -36,7 +44,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `commands: ALL` は維持している。Ansibleの各モジュールは実行のたびに一時パスに生成されるスクリプトや apt/systemctl/useradd 等の多様なコマンドを呼び出すため、コマンド単位の許可リスト化は現実的ではないため
     * `nopassword: false` により本人のパスワード認証を必須にしている(`community.general.sudoers` は `nopassword` を省略すると既定で `true`=NOPASSWDになる点に注意)
     * `runas: root` に限定(`ALL` にはしていない。このテンプレートではroot以外へのbecomeを使わないため、昇格先を絞ってリスクを下げる)
-    * `defaults: ['logfile="/var/log/sudo-ansible.log"']` により、このユーザーのsudo実行内容を専用ログに記録する(`community.general` 13.1.0以降が必要。`collections/requirements.yml` でバージョン指定済み)
+    * sudoの `logfile` 設定は使わない。Ubuntu 26.04 の既定の sudo(sudo-rs)は `Defaults logfile` を拒否して失敗するため
 * `provisioning_user.private_key` が定義されていれば、localhost側 `./ssh/{{ provisioning_user.user }}` が未作成の場合のみ書き出す(次回ログオン用)
 * 変数は `group_vars/all.yml` に定義済み
 
@@ -45,13 +53,13 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 * Play1 `Update apt source`: `/etc/apt/sources.list` の `http://` または `mirror://` 始まりの行を `mirror://mirrors.ubuntu.com/mirrors.txt` に置換(`os_family == Debian` の場合のみ)
 * Play2 `Setup all hosts`:
     * `pre_tasks` で `apt update`(`cache_valid_time: 600`)+ `autoremove` + `upgrade: safe`
-    * `roles:` は既定でコメントアウトされており未使用(下記「roles 配下」参照)
+    * `roles:` には `disable_initial_user` のみ列挙している(下記「roles 配下」参照)
     * 追加パッケージとして `locales-all` をインストール
 * Play3 `Harden sshd`(Debian/Ubuntu系前提、サービス名 `ssh`):
     * `/etc/ssh/sshd_config` に `Include /etc/ssh/sshd_config.d/*.conf` があることを保証(`lineinfile` + `sshd -t` で検証)
     * `/etc/ssh/sshd_config.d/00-ansible-hardening.conf` に `PasswordAuthentication no` / `ChallengeResponseAuthentication no` / `PermitRootLogin no` を配置(`sshd -t` で検証してから配置、変更時のみ `service ssh reload` を通知)
     * ファイル名を `00-` にしているのは、Ubuntuのcloud-init由来 `50-cloud-init.conf`(`PasswordAuthentication yes` を含むことが多い)より先に評価させるため(sshdは同一ディレクティブの最初の指定を採用する)
-    * `provisioning.yml` は `exec.sh` の `check_connect()` が鍵認証での接続成功を確認した後にしか実行されないため、パスワード認証を無効化しても実行中の接続経路(鍵認証)を失うことはない
+    * `provisioning.yml` は `provision.sh` の `check_connect()` が鍵認証での接続成功を確認した後にしか実行されないため、パスワード認証を無効化しても実行中の接続経路(鍵認証)を失うことはない
 * Play4 `Configure firewall (ufw)`(Debian/Ubuntu系前提、RHEL系のfirewalldは対象外):
     * `ufw` パッケージをインストール
     * SSHポート(`ansible_port`、未設定なら22)を許可(**有効化より先に実行する順序を厳守**。逆にすると自分自身を締め出す)
@@ -72,8 +80,17 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
 
 ## roles 配下
 
-`roles/` は意図的に空(`.gitkeep` のみ)にしてあります。プロジェクトごとに必要な独自roleをここに追加し、
-`provisioning.yml` の `roles:` セクション(コメントアウト済み)を有効化して列挙する運用です。
+`roles/` には、テンプレートの標準 role として `disable_initial_user` を置いています。
+プロジェクトごとに必要な独自roleを追加し、`provisioning.yml` の `roles:` セクションに列挙して有効化する運用です。
+
+### disable_initial_user
+
+* OS 初期化直後の初期ユーザー(`disable_initial_user_name`、既定 `ubuntu`)のログインを無効化する
+    * ログインシェルを `/usr/sbin/nologin` にし、パスワードをロックする
+    * ローカルアカウントが無ければ何もしない(NIS/LDAP 側のユーザーには触れない)
+    * sudo 設定に名前が残っていれば警告を表示する
+* `provisioning.yml` の「Setup all hosts」で実行する。provisioning ユーザーでの接続確認(`provision.sh`)の後にしか実行されないため、ロックアウトしない
+* 無効化後は `bootstrap.sh` で初期化できなくなるため、初期ユーザー名は `inventory/bootstrap.yml` の `ansible_user` と一致させる
 テンプレート自体は特定のroleを前提としません。
 
 ## inventory 配下
@@ -83,7 +100,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `vars` で `ansible_connection: ssh`, `ansible_port: 22`
 * [inventory/bootstrap.yml](inventory/bootstrap.yml)
     * bootstrap用の初期ログイン変数 (`ansible_user`, `ansible_password`, `ansible_become_password`)
-    * `scripts/encrypt.sh` により Ansible Vault で暗号化管理
+    * `scripts/encrypt-file.sh` / `scripts/encrypt-string.sh` により Ansible Vault で暗号化管理
 * [inventory/provisioning.yml](inventory/provisioning.yml)
     * provisioning用ユーザー: `ansible_user: ansible`, `ansible_private_key_file: ./ssh/ansible`
     * `ansible_become_password: "{{ provisioning_user.password }}"`: `group_vars/all.yml` の
@@ -142,22 +159,22 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 
 ## Vault関連スクリプト
 
-* [scripts/encrypt.sh](scripts/encrypt.sh) / [scripts/decrypt.sh](scripts/decrypt.sh)
-    * 引数のファイルを `ansible-vault encrypt/decrypt` する(ファイル全体を暗号化)
+* [scripts/encrypt-file.sh](scripts/encrypt-file.sh) / [scripts/decrypt-file.sh](scripts/decrypt-file.sh)
+    * 引数のファイルを `ansible-vault encrypt/decrypt` する(ファイル全体を暗号化)。失敗時は終了コード 1 を返す
     * カレントディレクトリに `.vault_password` があればそれをパスワードファイルとして使う(`.gitignore` 済み)
-    * `exec.sh` が参照する `.vault_password` とファイル名は一致している
+    * `provision.sh` / `bootstrap.sh` が参照する `.vault_password` とファイル名は一致している
 * [scripts/encrypt-string.sh](scripts/encrypt-string.sh)
     * `ansible-vault encrypt_string` で特定の値だけを `変数名: !vault |` 形式にインライン暗号化する
       (ファイル全体を暗号化したくない場合に使う。例: `group_vars/all.yml` の `provisioning_user.password`)
     * 平文はプロンプトで隠し入力する(`--prompt`)。1行の値向け。複数行の値を暗号化したい場合は
       `ansible-vault encrypt_string --stdin-name <name> < ファイル` を直接使う
-    * `.vault_password` の有無による挙動は `encrypt.sh` と同じ
+    * `.vault_password` の有無による挙動は `encrypt-file.sh` と同じ
 * [scripts/decrypt-string.sh](scripts/decrypt-string.sh)
     * `group_vars/all.yml` 内のVault暗号化された値を復号して表示する(`ansible localhost -m debug` のラッパー)
     * ファイル全体がVault暗号化されているわけではないため `ansible-vault view/decrypt` は使えず、
       通常のvars解決経路(`-e @group_vars/all.yml` + `--vault-password-file`)で復号する
     * 引数には `provisioning_user.password` のようなドット区切りの変数パスを渡す
-    * `.vault_password` の有無による挙動は `encrypt.sh`/`encrypt-string.sh` と同じ
+    * `.vault_password` の有無による挙動は `encrypt-file.sh`/`encrypt-string.sh` と同じ
 
 ## .gitignore
 
@@ -178,7 +195,8 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |-- mise.toml
 |-- provisioning.yml
 |-- requirements.txt
-|-- exec.sh
+|-- bootstrap.sh
+|-- provision.sh
 |-- ssh_config
 |-- collections/
 |   `-- requirements.yml
@@ -191,9 +209,9 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |-- roles/
 |   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/
-|   |-- decrypt.sh
+|   |-- decrypt-file.sh
 |   |-- decrypt-string.sh
-|   |-- encrypt.sh
+|   |-- encrypt-file.sh
 |   |-- encrypt-string.sh
 |   `-- install-collections.sh
 `-- ssh/
