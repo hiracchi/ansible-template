@@ -4,3 +4,7 @@ ssh/*
 !ssh/.gitkeep
 ssh_known_hosts
 .venv/
+# Munge 鍵など、ホストに配布する秘密ファイル
+secrets/*
+*.key
+**/files/*.key
