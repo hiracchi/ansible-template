@@ -86,7 +86,10 @@ BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを�
 しているため、`ansible-vault view`/`decrypt`(=`scripts/decrypt-file.sh`)はこのファイルには使えない。
 
 ```bash
-# 変更(値を新しくして再暗号化。出力(`password: !vault |` ブロック)で
+# 変更(推奨。隠し入力で受け取り、group_vars/all.yml の password の行を自動で置き換える)
+./scripts/set-provisioning-user-password.sh
+
+# 変更(手作業。値を新しくして再暗号化。出力(`password: !vault |` ブロック)で
 # group_vars/all.yml の該当行を置き換える)
 ./scripts/encrypt-string.sh password       # プロンプトで新しい平文パスワードを入力
 

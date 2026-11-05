@@ -27,6 +27,10 @@
 Vaultパスワードは `./.vault_password` があれば `--vault-password-file` を使い、無ければ `--ask-vault-pass`。
 `BOOTSTRAP_ASK_BECOME_PASS=1` を環境変数で指定すると bootstrap 実行時に `--ask-become-pass` を追加する。
 
+`inventory/provisioning.yml` は `--extra-vars` で渡されるため、`host_vars` や `group_vars` の同名の変数
+(`ansible_user` など)より優先される。特定のホストだけ接続情報を変えたいときは、その変数を
+`provisioning.yml` から外すか、`-e` で明示的に上書きする。
+
 ## bootstrap.yml
 
 * play名 `Setup Ansible User`、`hosts: all`、`gather_facts: false`、`become: false`(各タスクで個別に `become: true`)
@@ -175,6 +179,23 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
       通常のvars解決経路(`-e @group_vars/all.yml` + `--vault-password-file`)で復号する
     * 引数には `provisioning_user.password` のようなドット区切りの変数パスを渡す
     * `.vault_password` の有無による挙動は `encrypt-file.sh`/`encrypt-string.sh` と同じ
+* [scripts/set-provisioning-user-password.sh](scripts/set-provisioning-user-password.sh)
+    * `group_vars/all.yml` の `provisioning_user.password` を、隠し入力で受け取った新しい値に置き換える
+    * 平文はファイルにもコマンドライン引数にも書き出さず、`ansible-vault encrypt_string` でインライン暗号化する
+    * 置き換え対象は `password: CHANGE_ME` でも既存の `password: !vault |` でもよい。暗号文は検証してから `all.yml` に反映する
+    * `.vault_password` が必要(`encrypt-string.sh` を手作業で使う手順の自動化)
+* [scripts/view.sh](scripts/view.sh)
+    * ファイル全体が `ansible-vault` で暗号化されたファイル(例: `inventory/bootstrap.yml`)を、復号せずに閲覧する
+    * `.vault_password` の有無による挙動は `encrypt-file.sh` と同じ
+* [scripts/make-password.sh](scripts/make-password.sh)
+    * `openssl passwd -6` で SHA-512 のパスワードハッシュ(`$6$...`、`/etc/shadow` 形式)を生成する
+
+## ansible-core 2.21 での注意
+
+* `ansible.builtin.shutdown` は存在しない。ノードを停止するときは `community.general.shutdown` を使う
+* `paramiko` の接続プラグインはなく、パスワード認証の SSH には `sshpass` が必要
+* リポジトリ直下に `requirements.yml` を置くと、`ansible-lint` が Galaxy からの導入を試みて失敗する。
+  コレクションの一覧は `collections/requirements.yml` に置く
 
 ## .gitignore
 
@@ -213,7 +234,10 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |   |-- decrypt-string.sh
 |   |-- encrypt-file.sh
 |   |-- encrypt-string.sh
-|   `-- install-collections.sh
+|   |-- install-collections.sh
+|   |-- make-password.sh
+|   |-- set-provisioning-user-password.sh
+|   `-- view.sh
 `-- ssh/
     `-- .gitkeep              (秘密鍵の置き場)
 ```
