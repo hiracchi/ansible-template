@@ -80,6 +80,25 @@ BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを�
 ./provision.sh webservers      # webservers グループに限定して実行
 ```
 
+## 運用スクリプト(読み取り中心)
+
+```bash
+# ホストの健康状態の検査(読み取り専用)。ノード名か all(既定は all グループ)を指定する
+./scripts/node-health.sh web-01
+./scripts/node-health.sh -g webservers all      # all の対象を webservers グループにする
+
+# ノードの電源オフ(確認あり)。-n で対象の一覧だけ表示、-d 分 で遅延、-y で確認を省略
+./scripts/shutdown-nodes.sh -n web-01
+./scripts/shutdown-nodes.sh -d 10 -g webservers all
+
+# 機器スペックの一覧(Markdown)を docs/hosts/machine-specs.md に出力する
+./scripts/collect-machine-specs.sh
+./scripts/collect-machine-specs.sh -o - -x db-01   # 標準出力へ。db-01 は除外する
+```
+
+プロジェクトに合わせて、各スクリプトの先頭にある設定(`DEFAULT_ALL_GROUP`、`DEFAULT_CRASH_CHECKS`、
+`DOC_TITLE`、`DEFAULT_EXCLUDE_HOSTS`)を変えてください。詳細は SPEC.md を参照。
+
 ## パスワードの変更/確認
 
 `group_vars/all.yml` はファイル全体をVault暗号化しておらず、`password` の値だけを個別にインライン暗号化

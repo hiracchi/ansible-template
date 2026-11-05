@@ -190,6 +190,34 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 * [scripts/make-password.sh](scripts/make-password.sh)
     * `openssl passwd -6` で SHA-512 のパスワードハッシュ(`$6$...`、`/etc/shadow` 形式)を生成する
 
+## 運用スクリプト
+
+* [scripts/node-health.sh](scripts/node-health.sh) / [scripts/node-health-remote.sh](scripts/node-health-remote.sh)
+    * ホストの状態を読み取り専用で検査する。`node-health.sh` が Ansible で各ホストに `node-health-remote.sh` を実行し、結果を整形して表示する
+    * 検査項目: 稼働状況、起動履歴(60 秒未満の起動の回数)、前回の終了が正常か、EDAC・MCE・rasdaemon のエラー、
+      kdump(kdump-tools が入っているホストだけ)、SMART と SSD の寿命、ディスク使用率、失敗中のサービス、時刻同期、
+      参考情報(BIOS・基板・DIMM・microcode・IPMI SEL など)
+    * 表示は OK / WARN / NG / SKIP / INFO。設定は変更しない
+    * 引数はノード名か `all`。`all` の対象は `DEFAULT_ALL_GROUP`(既定 `all`)か、`-g グループ名` で指定する
+    * panic 系 sysctl の期待値の検査は、プロジェクトの方針なので、`--crash-checks` を付けるか
+      `DEFAULT_CRASH_CHECKS=1` のときだけ行う
+* [scripts/shutdown-nodes.sh](scripts/shutdown-nodes.sh)
+    * ノードを `community.general.shutdown` で電源オフする。対象の指定は `node-health.sh` と同じ(`-g`、`DEFAULT_ALL_GROUP`)
+    * 実行前に対象ホストを表示し、`yes` の入力を求める。`-n` は dry-run、`-d 分` は遅延、`-y` は確認の省略
+* [scripts/collect-machine-specs.sh](scripts/collect-machine-specs.sh)
+    * 各ホストに SSH(`~/.ssh/config` の Host 名、鍵認証)で接続し、OS・カーネル・CPU・メモリ・ディスク・GPU を Markdown の表にする
+    * 役割(inventory グループ)は `inventory/hosts.yml` から取得する。既定の対象は inventory の全ホストから
+      `DEFAULT_EXCLUDE_HOSTS` を除いたもの(`-x` で追加の除外も指定できる)
+    * 出力先の既定は `docs/hosts/machine-specs.md`(`-o -` で標準出力)
+* プロジェクトごとに変える設定は、各スクリプトの先頭にある次の変数にまとめている。
+
+| 変数 | スクリプト | 意味 | 既定 |
+|---|---|---|---|
+| `DEFAULT_ALL_GROUP` | node-health.sh、shutdown-nodes.sh | `all` を指定したときの対象グループ | `all` |
+| `DEFAULT_CRASH_CHECKS` | node-health.sh | panic 系 sysctl の検査を既定で行うか(1 で有効) | `0` |
+| `DOC_TITLE` | collect-machine-specs.sh | 出力する表の見出しに使う名前 | `プロジェクト` |
+| `DEFAULT_EXCLUDE_HOSTS` | collect-machine-specs.sh | 既定で対象から外すホスト(空白区切り) | 空 |
+
 ## ansible-core 2.21 での注意
 
 * `ansible.builtin.shutdown` は存在しない。ノードを停止するときは `community.general.shutdown` を使う
@@ -230,13 +258,18 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |-- roles/
 |   `-- .gitkeep              (中身なし、独自role追加用の置き場)
 |-- scripts/
+|   |-- collect-machine-specs.sh
 |   |-- decrypt-file.sh
 |   |-- decrypt-string.sh
 |   |-- encrypt-file.sh
 |   |-- encrypt-string.sh
 |   |-- install-collections.sh
 |   |-- make-password.sh
+|   |-- new-project.sh
+|   |-- node-health-remote.sh
+|   |-- node-health.sh
 |   |-- set-provisioning-user-password.sh
+|   |-- shutdown-nodes.sh
 |   `-- view.sh
 `-- ssh/
     `-- .gitkeep              (秘密鍵の置き場)
