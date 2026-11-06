@@ -104,7 +104,11 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
     * `vars` で `ansible_connection: ssh`, `ansible_port: 22`
 * [inventory/bootstrap.yml](inventory/bootstrap.yml)
     * bootstrap用の初期ログイン変数 (`ansible_user`, `ansible_password`, `ansible_become_password`)
-    * `scripts/encrypt-file.sh` / `scripts/encrypt-string.sh` により Ansible Vault で暗号化管理
+    * 平文の初期パスワードをコミットしない。次のどちらかで Ansible Vault 暗号化する
+        * ファイル全体: `scripts/encrypt-file.sh`(閲覧は `scripts/view.sh`)
+        * 値ごと: `scripts/encrypt-string.sh -e ansible_password inventory/bootstrap.yml`(`ansible_user` は平文)。
+          `bootstrap.sh` の `--extra-vars="@inventory/bootstrap.yml"` で復号できる。この場合 `view.sh` は使えず、
+          確認は `ansible localhost -m debug -a 'msg="{{ ansible_password }}"' -e @inventory/bootstrap.yml --vault-password-file .vault_password`
 * [inventory/provisioning.yml](inventory/provisioning.yml)
     * provisioning用ユーザー: `ansible_user: ansible`, `ansible_private_key_file: ./ssh/ansible`
     * `ansible_become_password: "{{ provisioning_user.password }}"`: `group_vars/all.yml` の
@@ -121,9 +125,8 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
       `bootstrap.yml` がアカウント作成時に `password_hash` フィルタでハッシュ化し、
       `inventory/provisioning.yml` の `ansible_become_password` もこの値を直接参照するため、
       設定・ローテーションが必要な箇所はここ1箇所のみ。ファイル全体はVault暗号化していないため、
-      実際の値を設定したら `scripts/encrypt-string.sh password` で**この値だけ**を暗号化し、
-      出力(`password: !vault |` ブロック)で該当行を置き換えること(現状はダミー値の
-      プレースホルダーが平文で入っている)
+      実際の値を設定したら `scripts/encrypt-string.sh -e provisioning_user.password` で**この値だけ**を暗号化すること
+      (該当行が `!vault` ブロックに直接置き換わる。現状はダミー値のプレースホルダーが平文で入っている)
 
 ## ansible.cfg
 
@@ -168,27 +171,28 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
     * カレントディレクトリに `.vault_password` があればそれをパスワードファイルとして使う(`.gitignore` 済み)
     * `provision.sh` / `bootstrap.sh` が参照する `.vault_password` とファイル名は一致している
 * [scripts/encrypt-string.sh](scripts/encrypt-string.sh)
-    * `ansible-vault encrypt_string` で特定の値だけを `変数名: !vault |` 形式にインライン暗号化する
-      (ファイル全体を暗号化したくない場合に使う。例: `group_vars/all.yml` の `provisioning_user.password`)
-    * 平文はプロンプトで隠し入力する(`--prompt`)。1行の値向け。複数行の値を暗号化したい場合は
-      `ansible-vault encrypt_string --stdin-name <name> < ファイル` を直接使う
-    * `.vault_password` の有無による挙動は `encrypt-file.sh` と同じ
+    * 引数の形式で動作が変わる
+        * `変数名` のみ(例: `password`): 入力した値を暗号化し、結果を標準出力に表示する。ファイルは変更しない
+        * `キーパス [YAMLファイル]`(例: `provisioning_user.password`): 該当行を `!vault` ブロックで直接置き換える。
+          ファイル省略時は `group_vars/all.yml`(例: `-e ansible_password inventory/bootstrap.yml`)。他の行・コメントは残す
+        * `-e` を付けると、入力せずファイル内の現在値をそのまま暗号化する
+    * 平文は隠し入力する(2回入力が一致した場合のみ処理する)
+    * `my_users.<名前>.password` の場合は、入力値を SHA-512 ハッシュ(`openssl passwd -6`)に変換してから暗号化する
+    * キーパスの書き換えは [scripts/yaml_vault_inplace.py](scripts/yaml_vault_inplace.py) が行う
+      (リストの要素は `my_users.toshi.password` のように、`user: toshi` の項目を名前で指定する)
+    * `.vault_password` があればそれをパスワードファイルとして使い、無ければ `--ask-vault-pass` で尋ねる(`.gitignore` 済み)
 * [scripts/decrypt-string.sh](scripts/decrypt-string.sh)
-    * `group_vars/all.yml` 内のVault暗号化された値を復号して表示する(`ansible localhost -m debug` のラッパー)
-    * ファイル全体がVault暗号化されているわけではないため `ansible-vault view/decrypt` は使えず、
-      通常のvars解決経路(`-e @group_vars/all.yml` + `--vault-password-file`)で復号する
-    * 引数には `provisioning_user.password` のようなドット区切りの変数パスを渡す
-    * `.vault_password` の有無による挙動は `encrypt-file.sh`/`encrypt-string.sh` と同じ
-* [scripts/set-provisioning-user-password.sh](scripts/set-provisioning-user-password.sh)
-    * `group_vars/all.yml` の `provisioning_user.password` を、隠し入力で受け取った新しい値に置き換える
-    * 平文はファイルにもコマンドライン引数にも書き出さず、`ansible-vault encrypt_string` でインライン暗号化する
-    * 置き換え対象は `password: CHANGE_ME` でも既存の `password: !vault |` でもよい。暗号文は検証してから `all.yml` に反映する
-    * `.vault_password` が必要(`encrypt-string.sh` を手作業で使う手順の自動化)
+    * 変数パスを指定し、復号した値を画面に平文で表示する(`ansible localhost -m debug` のラッパー)。`group_vars/all.yml` 専用
+    * `my_users.toshi.password` のように、`my_users` は名前で指定できる。引数なし・`-h` で使い方を表示する
+    * ファイル全体がVault暗号化されているわけではないため、`ansible-vault view/decrypt` は使えない
+* [scripts/hash-password.sh](scripts/hash-password.sh)
+    * パスワードを2回入力し、SHA-512 crypt(`$6$...`)のハッシュを標準出力に出す(依存は `openssl` のみ)
 * [scripts/view.sh](scripts/view.sh)
-    * ファイル全体が `ansible-vault` で暗号化されたファイル(例: `inventory/bootstrap.yml`)を、復号せずに閲覧する
+    * ファイル全体が `ansible-vault` で暗号化されたファイルを、復号せずに閲覧する(内部は `ansible-vault view`)
+    * `inventory/bootstrap.yml` を値ごとに暗号化した場合や `group_vars/all.yml` には使えない("Input is not vault encrypted data" になる)
     * `.vault_password` の有無による挙動は `encrypt-file.sh` と同じ
-* [scripts/make-password.sh](scripts/make-password.sh)
-    * `openssl passwd -6` で SHA-512 のパスワードハッシュ(`$6$...`、`/etc/shadow` 形式)を生成する
+* [scripts/yaml_vault_inplace.py](scripts/yaml_vault_inplace.py)
+    * `encrypt-string.sh` から呼ばれる補助スクリプト(単体では使わない)。YAML の該当キーの値を読み書きする
 
 ## 運用スクリプト
 
@@ -250,7 +254,7 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |-- collections/
 |   `-- requirements.yml
 |-- group_vars/
-|   `-- all.yml                (provisioning_user.passwordのみ ansible-vault encrypt_string で暗号化)
+|   `-- all.yml                (秘密の値のみ encrypt-string.sh で !vault 暗号化)
 |-- inventory/
 |   |-- hosts.yml
 |   |-- bootstrap.yml         (Ansible Vault暗号化済み)
@@ -263,14 +267,14 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
 |   |-- decrypt-string.sh
 |   |-- encrypt-file.sh
 |   |-- encrypt-string.sh
+|   |-- hash-password.sh
 |   |-- install-collections.sh
-|   |-- make-password.sh
 |   |-- new-project.sh
 |   |-- node-health-remote.sh
 |   |-- node-health.sh
-|   |-- set-provisioning-user-password.sh
 |   |-- shutdown-nodes.sh
-|   `-- view.sh
+|   |-- view.sh
+|   `-- yaml_vault_inplace.py
 `-- ssh/
     `-- .gitkeep              (秘密鍵の置き場)
 ```

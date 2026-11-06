@@ -48,9 +48,15 @@ mise run install      # .venv に Ansible / lint ツール / passlib と Ansible
    `provisioning_user.password` には**平文の**パスワードをそのまま設定する(ハッシュ化は
    `bootstrap.yml` が実行時に `password_hash` フィルタで行う。sudoはNOPASSWDにせず、パスワード認証を必須にしている)。
    このファイルはファイル全体をVault暗号化してはいないため、設定したら
-   `./scripts/encrypt-string.sh password` で **この値だけ** を暗号化し、出力
-   (`password: !vault |` ブロック)で該当行を置き換える
-4. `inventory/bootstrap.yml` の初期ログイン情報 (bootstrap用) を必要に応じて編集し、`./scripts/encrypt-file.sh inventory/bootstrap.yml` でVault暗号化する
+   `./scripts/encrypt-string.sh -e provisioning_user.password` で **この値だけ** を暗号化する
+   (`group_vars/all.yml` の該当行が `!vault` ブロックに直接置き換わる。他の行・コメントは残る)
+4. `inventory/bootstrap.yml` の初期ログイン情報 (bootstrap用) を必要に応じて編集し、Vault暗号化する。
+   平文の初期パスワードをコミットしないこと。暗号化の方法は次のどちらか
+   * ファイル全体: `./scripts/encrypt-file.sh inventory/bootstrap.yml`(閲覧は `./scripts/view.sh inventory/bootstrap.yml`)
+   * 値ごと: `./scripts/encrypt-string.sh -e ansible_password inventory/bootstrap.yml` と
+     `./scripts/encrypt-string.sh -e ansible_become_password inventory/bootstrap.yml`
+     (`ansible_user` は平文のまま。`bootstrap.sh` の `-e @inventory/bootstrap.yml` で復号できる。
+     この場合 `view.sh` / `ansible-vault view` は使えない)
 5. `inventory/provisioning.yml` の `ansible_user` / `ansible_private_key_file` を設定する
    (`ansible_become_password` は `group_vars/all.yml` の `provisioning_user.password` を参照する形になっているため編集不要。
    このファイル自体はもう秘密を含まないためVault暗号化も不要)
@@ -101,17 +107,30 @@ BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを�
 
 ## パスワードの変更/確認
 
-`group_vars/all.yml` はファイル全体をVault暗号化しておらず、`password` の値だけを個別にインライン暗号化
-しているため、`ansible-vault view`/`decrypt`(=`scripts/decrypt-file.sh`)はこのファイルには使えない。
+`group_vars/all.yml` はファイル全体をVault暗号化しておらず、`password` などの値だけを個別にインライン暗号化
+しているため、`ansible-vault view`/`decrypt`(=`scripts/view.sh` / `scripts/decrypt-file.sh`)はこのファイルには使えない。
+`view.sh` と `decrypt-file.sh` は、ファイル全体を暗号化したファイル用。
 
 ```bash
-# 変更(推奨。隠し入力で受け取り、group_vars/all.yml の password の行を自動で置き換える)
-./scripts/set-provisioning-user-password.sh
+# 変更(隠し入力で受け取り、group_vars/all.yml の該当キーを !vault ブロックに自動で置き換える)
+./scripts/encrypt-string.sh provisioning_user.password
 
-# 変更(手作業。値を新しくして再暗号化。出力(`password: !vault |` ブロック)で
-# group_vars/all.yml の該当行を置き換える)
-./scripts/encrypt-string.sh password       # プロンプトで新しい平文パスワードを入力
+# ファイルにある現在の値を、入力なしでそのまま暗号化する(平文を入れた後の暗号化に使う)
+./scripts/encrypt-string.sh -e provisioning_user.password
 
-# 確認(復号して表示)
+# 別のYAMLファイルの値を暗号化する(第2引数でファイルを指定)
+./scripts/encrypt-string.sh -e ansible_password inventory/bootstrap.yml
+
+# リストの要素は user 名などで指定する(入力値は SHA-512 ハッシュに変換してから暗号化される)
+./scripts/encrypt-string.sh my_users.<名前>.password
+
+# ハッシュだけを作りたい場合(依存は openssl のみ)
+./scripts/hash-password.sh
+
+# 確認(復号して表示。group_vars/all.yml 専用)
 ./scripts/decrypt-string.sh provisioning_user.password
+
+# inventory/bootstrap.yml を値ごとに暗号化した場合の確認(msg は引用符で囲むこと)
+ansible localhost -m debug -a 'msg="{{ ansible_password }}"' \
+  -e @inventory/bootstrap.yml --vault-password-file .vault_password
 ```
