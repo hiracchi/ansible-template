@@ -62,7 +62,8 @@ LEAF_NAME="${KEY_PATH##*.}"
 if [ "$EXISTING" -eq 1 ]; then
     # ファイルの現在値をそのまま暗号化する。末尾改行を保つため、コマンド置換を通さず
     # 一時ファイル経由で受け取る。
-    TMP_OUT=$(mktemp) || exit 1
+    # macOS の mktemp は引数なしだと $TMPDIR ではなく /var/folders を使うため、テンプレートで明示する
+    TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/encrypt-string.XXXXXX") || exit 1
     trap 'rm -f "$TMP_OUT"' EXIT
     set -o pipefail
     python3 "$HELPER" get "$KEY_PATH" "$TARGET_FILE" \
