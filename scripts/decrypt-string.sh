@@ -1,16 +1,19 @@
 #!/bin/bash
 
-# group_vars/all.yml 内の Vault 暗号化された値(password など)を復号して
-# 表示するスクリプト。ファイル全体ではなく特定の変数だけを暗号化する運用
-# (scripts/encrypt-string.sh)のため、ansible-vault view/decrypt は
-# このファイルには使えない(先頭が Vault ヘッダーではないため)。
+# YAML ファイル(既定は group_vars/all.yml)内の Vault 暗号化された値
+# (password など)を復号して表示するスクリプト。ファイル全体ではなく特定の
+# 変数だけを暗号化する運用(scripts/encrypt-string.sh)のため、
+# ansible-vault view/decrypt はこのファイルには使えない(先頭が Vault ヘッダーではないため)。
 # カレントディレクトリに .vault_password というファイルが存在すればそのファイルをパスワードファイルとして使用する
 # 例: ./scripts/decrypt-string.sh provisioning_user.password
+#     ./scripts/decrypt-string.sh ansible_password inventory/bootstrap.yml
 #     ./scripts/decrypt-string.sh my_users.toshi.password   (my_users は user: 名 で引く)
 
 usage() {
-    echo "Usage: $0 <variable_path>"
+    echo "Usage: $0 <variable_path> [yaml_file]"
+    echo "  yaml_file を省略すると group_vars/all.yml を読む"
     echo "  e.g. $0 provisioning_user.password"
+    echo "       $0 ansible_password inventory/bootstrap.yml"
     echo "       $0 my_users.toshi.password     (my_users は user が toshi の項目)"
     echo "       $0 'my_users[0].password'      (リストは [番号] でも指定可)"
     echo "復号した値は平文で画面に表示されます。"
@@ -25,6 +28,12 @@ case "${1:-}" in
 esac
 
 VAR_PATH="$1"
+TARGET_FILE="${2:-group_vars/all.yml}"
+
+if [ ! -f "$TARGET_FILE" ]; then
+    echo "ファイルが見つかりません: $TARGET_FILE" >&2
+    exit 1
+fi
 ANSIBLE_VAULT_PASSWORD_FILE=".vault_password"
 
 VAULT_PASSWORD_OPTION="--ask-vault-pass"
@@ -39,4 +48,4 @@ else
     EXPR="${VAR_PATH}"
 fi
 
-ansible localhost -m debug -a "msg={{ ${EXPR} }}" -e @group_vars/all.yml $VAULT_PASSWORD_OPTION
+ansible localhost -m debug -a "msg={{ ${EXPR} }}" -e "@${TARGET_FILE}" $VAULT_PASSWORD_OPTION

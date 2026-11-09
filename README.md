@@ -127,10 +127,9 @@ BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを�
 # ハッシュだけを作りたい場合(依存は openssl のみ)
 ./scripts/hash-password.sh
 
-# 確認(復号して表示。group_vars/all.yml 専用)
+# 確認(復号して表示。第2引数で対象ファイルを指定可、省略時は group_vars/all.yml)
 ./scripts/decrypt-string.sh provisioning_user.password
 
-# inventory/bootstrap.yml を値ごとに暗号化した場合の確認(msg は引用符で囲むこと)
-ansible localhost -m debug -a 'msg="{{ ansible_password }}"' \
-  -e @inventory/bootstrap.yml --vault-password-file .vault_password
+# inventory/bootstrap.yml を値ごとに暗号化した場合の確認
+./scripts/decrypt-string.sh ansible_password inventory/bootstrap.yml
 ```

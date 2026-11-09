@@ -108,7 +108,7 @@ Vaultパスワードは `./.vault_password` があれば `--vault-password-file`
         * ファイル全体: `scripts/encrypt-file.sh`(閲覧は `scripts/view.sh`)
         * 値ごと: `scripts/encrypt-string.sh -e ansible_password inventory/bootstrap.yml`(`ansible_user` は平文)。
           `bootstrap.sh` の `--extra-vars="@inventory/bootstrap.yml"` で復号できる。この場合 `view.sh` は使えず、
-          確認は `ansible localhost -m debug -a 'msg="{{ ansible_password }}"' -e @inventory/bootstrap.yml --vault-password-file .vault_password`
+          確認は `./scripts/decrypt-string.sh ansible_password inventory/bootstrap.yml`
 * [inventory/provisioning.yml](inventory/provisioning.yml)
     * provisioning用ユーザー: `ansible_user: ansible`, `ansible_private_key_file: ./ssh/ansible`
     * `ansible_become_password: "{{ provisioning_user.password }}"`: `group_vars/all.yml` の
@@ -182,7 +182,7 @@ GitHub Actions は使用しない(ワークフローは削除済み。必要に�
       (リストの要素は `my_users.toshi.password` のように、`user: toshi` の項目を名前で指定する)
     * `.vault_password` があればそれをパスワードファイルとして使い、無ければ `--ask-vault-pass` で尋ねる(`.gitignore` 済み)
 * [scripts/decrypt-string.sh](scripts/decrypt-string.sh)
-    * 変数パスを指定し、復号した値を画面に平文で表示する(`ansible localhost -m debug` のラッパー)。`group_vars/all.yml` 専用
+    * 変数パスを指定し、復号した値を画面に平文で表示する(`ansible localhost -m debug` のラッパー)。第2引数で対象の YAML を指定できる(省略時は `group_vars/all.yml`。例: `./scripts/decrypt-string.sh ansible_password inventory/bootstrap.yml`)
     * `my_users.toshi.password` のように、`my_users` は名前で指定できる。引数なし・`-h` で使い方を表示する
     * ファイル全体がVault暗号化されているわけではないため、`ansible-vault view/decrypt` は使えない
 * [scripts/hash-password.sh](scripts/hash-password.sh)
