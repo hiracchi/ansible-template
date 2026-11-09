@@ -45,9 +45,10 @@ fi
 
 # 2b. 前回の終了が正常か(shutdown/reboot の記録があるか)
 if [ "${total:-0}" -ge 2 ]; then
-  # 正常な終了の記録: reboot/poweroff の target 到達、systemd-shutdown の動作
-  # (journald の "Journal stopped" は起動時にも出るため、判定には使わない)
-  if journalctl -b -1 --no-pager 2>/dev/null | grep -qE "Reached target .*(Shutdown|Reboot|Power-Off)|systemd-shutdown\["; then
+  # 正常な終了の記録: PID 1 の reboot/poweroff/shutdown の target 到達、systemd-shutdown の動作
+  # (journald の "Journal stopped" は起動時にも出る。ユーザーマネージャ systemd[PID] の
+  #  "Reached target shutdown.target" はログアウトでも出るため、どちらも判定には使わない)
+  if journalctl -b -1 --no-pager 2>/dev/null | grep -qE "systemd\[1\]: Reached target (reboot|poweroff|halt|kexec|final|shutdown)\.target|systemd-shutdown\["; then
     report OK "prev-shutdown" "前回は正常な shutdown/reboot の記録あり"
   else
     report NG "prev-shutdown" "前回は正常な終了の記録なし(ログが途切れて停止した可能性)"

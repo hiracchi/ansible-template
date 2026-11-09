@@ -93,9 +93,10 @@ BOOTSTRAP_ASK_BECOME_PASS=1 ./bootstrap.sh web-01   # becomeパスワードを�
 ./scripts/node-health.sh web-01
 ./scripts/node-health.sh -g webservers all      # all の対象を webservers グループにする
 
-# ノードの電源オフ(確認あり)。-n で対象の一覧だけ表示、-d 分 で遅延、-y で確認を省略
+# ノードの電源オフ(確認あり)。-n で対象の一覧だけ表示、-d 分 で遅延、-y で確認を省略、-r で再起動
 ./scripts/shutdown-nodes.sh -n web-01
 ./scripts/shutdown-nodes.sh -d 10 -g webservers all
+./scripts/shutdown-nodes.sh -r web-01             # 再起動して、復帰を待つ
 
 # 機器スペックの一覧(Markdown)を docs/hosts/machine-specs.md に出力する
 ./scripts/collect-machine-specs.sh

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# ノードを電源オフする。ノード名を指定するか、all(既定のグループ)を指定する。
+# ノードを電源オフ(または -r で再起動)する。ノード名を指定するか、all(既定のグループ)を指定する。
 #
 # 使い方:
-#   scripts/shutdown-nodes.sh [-g グループ名] [-d 分] [-n] [-y] <ノード名 | all>
+#   scripts/shutdown-nodes.sh [-g グループ名] [-d 分] [-r] [-n] [-y] <ノード名 | all>
 #     -g グループ名  all の対象にするグループ(省略時は DEFAULT_ALL_GROUP)
-#     -d 分          指定した分数の後に電源オフする(省略時は即時)
+#     -d 分          指定した分数の後に実行する(省略時は即時)
+#     -r             電源オフではなく再起動する(ノードが SSH で戻るまで待つ)
 #     -n             実行せず、対象ノードの一覧だけ表示する(dry-run)
 #     -y             確認プロンプトを省略する
 #
 # 例:
 #   scripts/shutdown-nodes.sh <ノード名>      # 1 台を即時電源オフ
 #   scripts/shutdown-nodes.sh -d 10 all       # 既定のグループ全体を 10 分後に電源オフ
+#   scripts/shutdown-nodes.sh -r <ノード名>   # 1 台を再起動し、復帰を待つ
 #   scripts/shutdown-nodes.sh -n all          # 対象一覧の確認だけ
 #
 # プロジェクトに合わせて、下の DEFAULT_ALL_GROUP を変える。
@@ -31,6 +33,7 @@ VAULT_FILE="./.vault_password"
 
 DELAY_MIN=0
 DRY_RUN=false
+REBOOT=false
 ASSUME_YES=false
 
 if [[ ! -x "${ANSIBLE_BIN}/ansible" ]]; then
@@ -58,6 +61,7 @@ while [[ $# -gt 0 ]]; do
       ALL_GROUP="$2"
       shift 2
       ;;
+    -r) REBOOT=true; shift ;;
     -n) DRY_RUN=true; shift ;;
     -y) ASSUME_YES=true; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -114,7 +118,8 @@ fi
 echo "対象: ${TARGET}(${PATTERN})"
 echo "ホスト:"
 printf '  - %s\n' ${HOSTS}
-echo "電源オフ: ${WHEN}"
+if "${REBOOT}"; then ACTION="再起動"; else ACTION="電源オフ"; fi
+echo "${ACTION}: ${WHEN}"
 
 if "${DRY_RUN}"; then
   echo "(dry-run のため、実行しません)"
@@ -122,7 +127,7 @@ if "${DRY_RUN}"; then
 fi
 
 if ! "${ASSUME_YES}"; then
-  read -r -p "本当に電源オフしますか?(yes と入力): " answer
+  read -r -p "本当に${ACTION}しますか?(yes と入力): " answer
   if [[ "${answer}" != "yes" ]]; then
     echo "中止しました。"
     exit 1
@@ -130,6 +135,13 @@ if ! "${ASSUME_YES}"; then
 fi
 
 DELAY_SEC=$((DELAY_MIN * 60))
-"${ANSIBLE_BIN}/ansible" "${PATTERN}" "${ANSIBLE_ARGS[@]}" \
-  -b -m community.general.shutdown \
-  -a "delay=${DELAY_SEC} msg=shutdown-by-ansible"
+if "${REBOOT}"; then
+  # reboot モジュールは、ノードが SSH で戻るまで待つ(最大 15 分)
+  "${ANSIBLE_BIN}/ansible" "${PATTERN}" "${ANSIBLE_ARGS[@]}" \
+    -b -m ansible.builtin.reboot \
+    -a "pre_reboot_delay=${DELAY_SEC} reboot_timeout=900 msg=reboot-by-ansible"
+else
+  "${ANSIBLE_BIN}/ansible" "${PATTERN}" "${ANSIBLE_ARGS[@]}" \
+    -b -m community.general.shutdown \
+    -a "delay=${DELAY_SEC} msg=shutdown-by-ansible"
+fi
